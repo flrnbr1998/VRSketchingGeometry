@@ -8,4 +8,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/VRSketchingGeometry/Tests/Scenes/CommandTestScene.unity
     guid: 98d92473b9b449549852f2e42e5c911b
-  m_configObjects: {}
+  m_configObjects:
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: b6d58f1ad4b4a4c9db37f40a629feba4,
+      type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: ddff95fb908c344ba8b16327cfbac474,
+      type: 2}
