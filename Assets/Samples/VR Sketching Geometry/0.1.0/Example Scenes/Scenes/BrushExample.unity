@@ -123,6 +123,60 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &115391130
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 115391132}
+  - component: {fileID: 115391131}
+  m_Layer: 0
+  m_Name: AdvancedLSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &115391131
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 115391130}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ae85e46543684407ba14a9ab210148c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaults: {fileID: 11400000, guid: 80ac1fe1704d8434eac74bc2c69b9794, type: 2}
+  customMaterial: {fileID: 2100000, guid: 4bc5bde4fded4657aeb07971852dec51, type: 2}
+  iterations: 1
+  pointAddInterval: 0.1
+  minPointDistance: 0.3
+  drawDistanceFromCamera: 10
+  difference: {x: 0, y: 20, z: 0}
+  lineSegmentPrefab: {fileID: 1879048506292873826, guid: 18c0d8399752042509f55f4c4d44af48,
+    type: 3}
+  lSystemParent: {fileID: 0}
+--- !u!4 &115391132
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 115391130}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -27.453512, y: -49.748905, z: 9.614772}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &134339579
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -185,6 +239,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: XR Interaction Setup
+      objectReference: {fileID: 0}
+    - target: {fileID: 7313654230448209575, guid: 895f6f3c2d334633b5800312285058d2,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7696548424635294048, guid: 895f6f3c2d334633b5800312285058d2,
         type: 3}
@@ -309,7 +368,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1054627443
 Transform:
   m_ObjectHideFlags: 0
@@ -346,16 +405,21 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1054627442}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bc15a7ac83cad41fd8de7eca7435aa11, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   defaults: {fileID: 11400000, guid: 80ac1fe1704d8434eac74bc2c69b9794, type: 2}
   customMaterial: {fileID: 2100000, guid: 4bc5bde4fded4657aeb07971852dec51, type: 2}
-  pointAddInterval: 0.05
+  iterations: 1
+  pointAddInterval: 0.5
   minPointDistance: 0.11
   drawDistanceFromCamera: 5
+  difference: {x: 0, y: 20, z: 0}
+  lineSegmentPrefab: {fileID: 1879048506292873826, guid: 18c0d8399752042509f55f4c4d44af48,
+    type: 3}
+  lSystemParent: {fileID: 0}
 --- !u!120 &1054627447
 LineRenderer:
   serializedVersion: 2
@@ -364,7 +428,7 @@ LineRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1054627442}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -467,7 +531,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1054627442}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0137126fbc8354c77b5c909351644e61, type: 3}
   m_Name: 
@@ -477,8 +541,8 @@ MonoBehaviour:
   axiom: F
   iterations: 4
   ruleStrings:
-  - F=F[+FFK][-FFK][*FFK][#FFK]
-  - K=[!F][?F]
+  - F=F[+F][-F][*F][#F]
+  - K=[!FFF][?FFF]
   spawnDistance: 2
 --- !u!1 &1221387167
 GameObject:
@@ -637,7 +701,7 @@ Camera:
   m_GameObject: {fileID: 1248908167}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
+  m_ClearFlags: 2
   m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
@@ -707,3 +771,4 @@ SceneRoots:
   - {fileID: 170649426}
   - {fileID: 1054627443}
   - {fileID: 1221387172}
+  - {fileID: 115391132}

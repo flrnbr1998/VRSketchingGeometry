@@ -226,3 +226,6 @@ MonoBehaviour:
   length: 0.5
   angle: 25
   lineWidth: 0.02
+  lineSegmentPrefab: {fileID: 1879048506292873826, guid: 18c0d8399752042509f55f4c4d44af48,
+    type: 3}
+  parentObject: {fileID: 0}

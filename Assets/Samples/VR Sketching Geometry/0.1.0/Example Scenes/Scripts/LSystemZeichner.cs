@@ -33,7 +33,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         private void PlaceLSystem()
         {
             Vector3 position = GetDrawPointInFrontOfCamera();
-            Quaternion rotation = Quaternion.LookRotation(Camera.main.transform.up);
+            Quaternion rotation = Quaternion.LookRotation(Camera.main.transform.right);
 
             GameObject instance = Instantiate(lSystemPrefab, position, rotation);
 

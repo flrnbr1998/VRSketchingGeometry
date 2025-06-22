@@ -92,8 +92,8 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.test-framework.performance": {
-      "version": "2.8.1-preview",
-      "depth": 1,
+      "version": "2.7.0-preview",
+      "depth": 0,
       "source": "registry",
       "dependencies": {
         "com.unity.test-framework": "1.1.0",
@@ -200,16 +200,6 @@
         "com.unity.xr.legacyinputhelpers": "2.1.2"
       },
       "url": "https://packages.unity.com"
-    },
-    "de.htw-berlin.fki.vr-sketching-geometry": {
-      "version": "https://github.com/hunsri/VRSketchingGeometryUP.git#0.1.0",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {
-        "com.unity.test-framework": "1.1.22",
-        "com.unity.test-framework.performance": "2.8.1-preview"
-      },
-      "hash": "07f10dfcca9fb7447335e31773e6ae0208f2b9cd"
     },
     "com.unity.modules.ai": {
       "version": "1.0.0",

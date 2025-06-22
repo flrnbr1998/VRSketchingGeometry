@@ -1,6 +1,118 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public class LSystemGenerator : MonoBehaviour
+{
+    public float length = 0.5f;
+    public float defaultAngle = 25f;
+    public float lineWidth = 0.02f;
+
+    public GameObject lineSegmentPrefab;
+    public Transform parentObject;
+
+    public void Generate(string axiom, Dictionary<char, string> rules, int iterations)
+    {
+        string generated = ExpandLSystem(axiom, rules, iterations);
+        InterpretLSystem(generated);
+    }
+
+    private string ExpandLSystem(string axiom, Dictionary<char, string> rules, int iterations)
+    {
+        string current = axiom;
+        for (int i = 0; i < iterations; i++)
+        {
+            string next = "";
+            foreach (char c in current)
+            {
+                next += rules.ContainsKey(c) ? rules[c] : c.ToString();
+            }
+            current = next;
+        }
+        return current;
+    }
+
+    private void InterpretLSystem(string lSystem)
+    {
+        Stack<TransformInfo> transformStack = new Stack<TransformInfo>();
+        Vector3 position = transform.position;
+        Quaternion rotation = Quaternion.LookRotation(Vector3.up);
+
+        int i = 0;
+        while (i < lSystem.Length)
+        {
+            char command = lSystem[i];
+
+            // Neue Rotationserkennung: R(x,y,z,angle)
+            if (command == 'R' && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
+            {
+                int end = lSystem.IndexOf(')', i + 2);
+                if (end > i)
+                {
+                    string content = lSystem.Substring(i + 2, end - (i + 2));
+                    string[] parts = content.Split(',');
+                    if (parts.Length == 4 &&
+                        float.TryParse(parts[0], out float x) &&
+                        float.TryParse(parts[1], out float y) &&
+                        float.TryParse(parts[2], out float z) &&
+                        float.TryParse(parts[3], out float angle))
+                    {
+                        Vector3 axis = new Vector3(x, y, z).normalized;
+                        rotation *= Quaternion.AngleAxis(angle, axis);
+                        i = end + 1;
+                        continue;
+                    }
+                }
+            }
+
+            switch (command)
+            {
+                case 'F':
+                    Vector3 nextPosition = position + (rotation * Vector3.forward * length);
+                    Vector3 dir = nextPosition - position;
+                    float len = dir.magnitude;
+                    Vector3 center = (position + nextPosition) / 2f;
+
+                    GameObject segment = Instantiate(lineSegmentPrefab, center, Quaternion.LookRotation(dir));
+                    segment.transform.localScale = new Vector3(lineWidth, lineWidth, len);
+                    if (parentObject != null) segment.transform.SetParent(parentObject);
+
+                    position = nextPosition;
+                    break;
+
+                case '[':
+                    transformStack.Push(new TransformInfo(position, rotation));
+                    break;
+
+                case ']':
+                    if (transformStack.Count > 0)
+                    {
+                        var t = transformStack.Pop();
+                        position = t.Position;
+                        rotation = t.Rotation;
+                    }
+                    break;
+            }
+
+            i++;
+        }
+    }
+
+    private struct TransformInfo
+    {
+        public Vector3 Position;
+        public Quaternion Rotation;
+
+        public TransformInfo(Vector3 pos, Quaternion rot)
+        {
+            Position = pos;
+            Rotation = rot;
+        }
+    }
+}
+
+/*using System.Collections.Generic;
+using UnityEngine;
+
 [RequireComponent(typeof(LineRenderer))]
 public class LSystemGenerator : MonoBehaviour
 {
@@ -48,7 +160,7 @@ public class LSystemGenerator : MonoBehaviour
         Stack<TransformInfo> transformStack = new Stack<TransformInfo>();
 
         Vector3 position = transform.position;
-        Quaternion rotation = Quaternion.identity;
+        Quaternion rotation = Quaternion.LookRotation(Vector3.up);
 
         points.Add(position);
 
@@ -109,4 +221,4 @@ public class LSystemGenerator : MonoBehaviour
             Rotation = rotation;
         }
     }
-}
+}*/
