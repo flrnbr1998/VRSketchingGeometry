@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 using VRSketchingGeometry;
 using VRSketchingGeometry.Commands;
 using VRSketchingGeometry.Commands.Line;
@@ -54,13 +55,14 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             _bigBrush = CreateLineBrush(32, 4f, 32);
             
             //Drawing the lines and applying colors to them
-            ChangeLineMaterialColorTo(Color.red, DrawLineWithBrush(_minimalisticBrush));
-            ChangeLineMaterialColorTo(Color.green, DrawLineWithBrush(_roughBrush));
-            ChangeLineMaterialColorTo(Color.blue, DrawLineWithBrush(_fineBrush));
+            //ChangeLineMaterialColorTo(Color.red, DrawLineWithBrush(_minimalisticBrush));
+            //ChangeLineMaterialColorTo(Color.green, DrawLineWithBrush(_roughBrush));
+            //ChangeLineMaterialColorTo(Color.blue, DrawLineWithBrush(_fineBrush));
             
             //Drawing a line and applying a custom material to it
-            ChangeLineMaterialTo(customMaterial, DrawLineWithBrush(_bigBrush));
+            //ChangeLineMaterialTo(customMaterial, DrawLineWithBrush(_bigBrush));
         }
+
 
         /// <summary>
         /// Creates a LineBrush that can be used to modify the appearance of drawn lines
@@ -173,6 +175,31 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             ChangeLineMaterialColorTo(color, lineSketchObject);
             DrawLine(lineSketchObject);
         }
-        
+
+        public void drawLineThroughPoints(List<Vector3> points)
+        {
+
+            //Create a LineSketchObject
+            LineSketchObject lineSketchObject =
+                Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
+
+
+            //Setting the properties of the new LineSketchObject with the given LineBrush
+            Invoker.ExecuteCommand(new SetBrushCommand(lineSketchObject, _bigBrush));
+
+
+            //Attaching the new LineSketchObject to the SketchWorld
+            Invoker.ExecuteCommand(new AddObjectToSketchWorldRootCommand(lineSketchObject, _sketchWorld));
+
+            //Drawing the actual line
+            foreach (Vector3 point in points) {
+                Invoker.ExecuteCommand(new AddControlPointCommand(lineSketchObject, point));
+            }
+
+            ChangeLineMaterialColorTo(Color.blue, lineSketchObject);
+
+        }
+
+
     }
 }

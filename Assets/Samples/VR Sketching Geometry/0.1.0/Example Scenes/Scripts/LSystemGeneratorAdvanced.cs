@@ -15,8 +15,14 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         private LineSketchObject _currentLine;
         private Vector3 _lastPoint;
 
+        
+
+
         [SerializeField] private DefaultReferences defaults;
         [SerializeField] private Material customMaterial;
+        [SerializeField] private AdvancedLSystemInterpreter generator;
+        [SerializeField] private BrushExample drawer;
+
         [SerializeField] private int iterations = 2;
         [SerializeField] private float pointAddInterval = 0.05f;
         [SerializeField] private float minPointDistance = 0.01f;
@@ -32,6 +38,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         private static readonly CommandInvoker Invoker = new CommandInvoker();
 
         private List<LineSketchObject> recordedLines = new List<LineSketchObject>();
+
+        List<Vector3> line = new List<Vector3>();
 
         void Start()
         {
@@ -68,6 +76,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             if (Input.GetMouseButtonUp(1))
             {
                 _currentLine = null;
+                drawer.drawLineThroughPoints(line);
+                line.Clear();
             }
 
             if (Input.GetKeyDown(KeyCode.K) && _currentLine != null)
@@ -79,7 +89,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
             if (Input.GetKeyDown(KeyCode.L) && recordedLines.Count > 0)
             {
-                GenerateRulesFromMultipleLines(recordedLines);
+                //GenerateRulesFromMultipleLines(recordedLines);
+                GenerateParaRulesFromMultipleLines(recordedLines);
                 //recordedLines.Clear();
             }
         }
@@ -89,6 +100,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             Vector3 drawPoint = GetMousePointInSpace();
             _currentLine = Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
             _currentLine.name = "DrawnLine";
+
+            line.Add(drawPoint);
 
             Invoker.ExecuteCommand(new SetBrushCommand(_currentLine, _brush));
             Invoker.ExecuteCommand(new AddObjectToSketchWorldRootCommand(_currentLine, _sketchWorld));
@@ -103,6 +116,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 Vector3 drawPoint = GetMousePointInSpace();
                 if (Vector3.Distance(_lastPoint, drawPoint) >= minPointDistance)
                 {
+                    line.Add(drawPoint);
                     Invoker.ExecuteCommand(new AddControlPointCommand(_currentLine, drawPoint));
                     _lastPoint = drawPoint;
                     return true;
@@ -127,7 +141,70 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             };
         }
 
-       private void GenerateRulesFromMultipleLines(List<LineSketchObject> lines)
+        private void GenerateParaRulesFromMultipleLines(List<LineSketchObject> lines)
+        {
+            if (lines == null || lines.Count == 0 || lineSegmentPrefab == null) return;
+
+            Dictionary<char, string> rules = new Dictionary<char, string>();
+            char symbol = 'F';
+            rules[symbol] = "";
+            string axiom = symbol.ToString();
+
+            // Pushes für jeden Linien-Stamm
+            foreach (var line in lines)
+                rules[symbol] += "[";
+
+            bool isFirstLine = true;
+
+            // Build rule string pro Linie
+            foreach (var line in lines)
+            {
+                var pts = line.GetControlPoints();
+                if (pts.Count < 2) continue;
+
+                string rule = "";
+                // Ausgangspunkt ist erster Punkt, Ausrichtung spielt keine Rolle mehr
+                Vector3 basePoint = pts[0];
+
+                if (!isFirstLine)
+                {
+                    Vector3 delta = pts[0] - lines[0].GetControlPoints()[0]; ;
+                    // Direkt Translation und parametrisches F mit Vektor
+                    rule += string.Format("T({0:0.###},{1:0.###},{2:0.###})", delta.x, delta.y, delta.z);
+                }
+
+
+                for (int i = 0; i < pts.Count - 1; i++)
+                {
+                    // World-space Delta
+                    Vector3 worldDelta = pts[i + 1] - pts[i];
+
+                    if (i == pts.Count - 2)
+                    {
+                        rule += string.Format("F({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
+                    }
+                    else
+                    {
+                        rule += string.Format("K({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
+                    }
+                }
+
+                rule += "]";
+                rules[symbol] += rule;
+                isFirstLine = false;
+            }
+
+            // Debug-Ausgabe
+            Debug.Log("AXIOM: " + axiom);
+            foreach (var kv in rules)
+                Debug.Log(kv.Key + " -> " + kv.Value);
+
+            // Interpreter starten
+            generator.Generate(axiom, rules, iterations);
+        
+        }
+
+        private void GenerateRulesFromMultipleLines(List<LineSketchObject> lines)
        {
             // 1) Vorbedingung: Keine Linien oder kein Prefab → Abbruch
             if (lines == null || lines.Count == 0 || lineSegmentPrefab == null) return;
@@ -180,6 +257,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     }
                 }
 
+
+
                 // 4.3) Immer ein F für das erste Segment
 
                 // 4.4) Für jedes weitere Segment: Rotation + F
@@ -224,14 +303,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 prevEndPoint = points[points.Count - 1];
             }
 
-            // 5) Interpreter aufsetzen
-            GameObject generatorObj = new GameObject("GeneratedLSystemMulti" + Random.Range(0, 9999));
-            var generator = generatorObj.AddComponent<AdvancedLSystemInterpreter>();
-            generator.lineSegmentPrefab = lineSegmentPrefab;
-            generator.parentObject = lSystemParent;
-            generator.lineWidth = 0.02f;
-            generator.length = 0.5f;
-            generator.defaultAngle = 25f;
+
 
             // 6) Debug: Axiom und Regeln ausgeben
             Debug.Log("AXIOM: " + axiom);
