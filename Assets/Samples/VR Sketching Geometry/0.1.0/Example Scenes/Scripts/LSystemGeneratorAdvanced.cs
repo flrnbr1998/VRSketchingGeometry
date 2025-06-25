@@ -179,7 +179,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     // World-space Delta
                     Vector3 worldDelta = pts[i + 1] - pts[i];
 
-                    if (i == pts.Count - 2)
+                    if (i == pts.Count - 2 || i == 0)
                     {
                         rule += string.Format("F({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
                     }
