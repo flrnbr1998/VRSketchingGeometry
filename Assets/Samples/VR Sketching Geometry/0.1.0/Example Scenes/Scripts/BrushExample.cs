@@ -36,6 +36,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         //Creates a CommandInvoker that is necessary to execute commands.
         private static readonly CommandInvoker Invoker = new CommandInvoker();
+
+        public Color new_color;
         
         void Start()
         {
@@ -183,6 +185,9 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             LineSketchObject lineSketchObject =
                 Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
 
+            LineBrush newBrush = CreateLineBrush(32, 1f, 64);
+
+           
 
             //Setting the properties of the new LineSketchObject with the given LineBrush
             Invoker.ExecuteCommand(new SetBrushCommand(lineSketchObject, _bigBrush));
@@ -196,7 +201,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 Invoker.ExecuteCommand(new AddControlPointCommand(lineSketchObject, point));
             }
 
-            ChangeLineMaterialColorTo(Color.blue, lineSketchObject);
+            ChangeLineMaterialColorTo(new_color, lineSketchObject);
 
         }
 

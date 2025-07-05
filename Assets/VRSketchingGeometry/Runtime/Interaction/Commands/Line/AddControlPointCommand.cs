@@ -16,7 +16,7 @@ namespace VRSketchingGeometry.Commands.Line {
         public AddControlPointCommand(LineSketchObject lineSketchObject, Vector3 controlPoint) {
             this.LineSketchObject = lineSketchObject;
             this.NewControlPoint = controlPoint;
-            Debug.Log(controlPoint);
+            //Debug.Log(controlPoint);
         }
 
         public bool Execute()

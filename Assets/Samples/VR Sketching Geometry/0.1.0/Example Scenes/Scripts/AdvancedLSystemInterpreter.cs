@@ -4,6 +4,9 @@ using UnityEngine;
 using System.Text.RegularExpressions;
 using System.Text;
 
+using System;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 using VRSketchingGeometry;
 using VRSketchingGeometry.Commands;
@@ -14,35 +17,17 @@ using VRSketchingGeometry.SketchObjectManagement;
 
 namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 {
-
     public class AdvancedLSystemInterpreter : MonoBehaviour
     {
-
-        //BrushSetup
-        private LineBrush _brush;
-        private LineSketchObject _currentLine;
-        private Vector3 _lastPoint;
-
         [SerializeField] private BrushExample drawer;
+        [SerializeField] private Boolean interpretAsTree = true;
 
-        public DefaultReferences defaults;
-        public Material customMaterial;
-
-        private SketchWorld _sketchWorld;
-        private static readonly CommandInvoker Invoker = new CommandInvoker();
-
-
-
-
-        public float length = 0.5f;
-        public float defaultAngle = 25f;
-        public float lineWidth = 0.02f;
 
         public GameObject lineSegmentPrefab;
         public Transform parentObject;
+        public float length = 0.5f;
+        public float lineWidth = 0.02f;
 
-
-        //Hilfsfunktion
         private bool TryParseVector(string token, out Vector3 vec)
         {
             vec = Vector3.zero;
@@ -52,321 +37,349 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
             string paramString = token.Substring(start + 1, end - start - 1);
             string[] parts = paramString.Split(',');
-
             if (parts.Length != 3) return false;
 
-            try
+            if (float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x) &&
+                float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y) &&
+                float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float z))
             {
-                vec = new Vector3(
-                    float.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture),
-                    float.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture),
-                    float.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture)
-                );
+                vec = new Vector3(x, y, z);
                 return true;
             }
-            catch
-            {
-                return false;
-            }
+            return false;
         }
 
-        //Hilfsfunktion
         private string TransformReplacement(string replacement, Quaternion rotation)
         {
-            // Sucht alle Kommandos mit Vektor-Parametern, z.B. F(0,1,0)
             var vectorCommandPattern = new Regex(@"([A-Za-z])\(([^)]+)\)");
-
             return vectorCommandPattern.Replace(replacement, match =>
             {
                 string cmd = match.Groups[1].Value;
                 string[] parts = match.Groups[2].Value.Split(',');
                 if (parts.Length != 3) return match.Value;
-
-                try
+                if (float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x) &&
+                    float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y) &&
+                    float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float z))
                 {
-                    Vector3 original = new Vector3(
-                        float.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture),
-                        float.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture),
-                        float.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture)
-                    );
-
+                    Vector3 original = new Vector3(x, y, z);
                     Vector3 rotated = rotation * original;
-
                     return string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                        "{0}({1:0.###},{2:0.###},{3:0.###})",
-                        cmd, rotated.x, rotated.y, rotated.z);
+                        "{0}({1:0.###},{2:0.###},{3:0.###})", cmd, rotated.x, rotated.y, rotated.z);
                 }
-                catch
-                {
-                    return match.Value; // Bei Fehler: unverändert lassen
-                }
+                return match.Value;
             });
         }
 
-
-        private void drawLine(List<Vector3> points)
+        private string inflateSystem(string baseString, Dictionary<char, string> rules)
         {
-            drawer.drawLineThroughPoints(points);
+
+
+            //Alle weiteren
+            var clusterRegex = new Regex(@"T\([^)]*\)(?:K\([^)]*\))*J\(([^)]*)\)");
+            var tokenPattern = new Regex(@"([A-Za-z])(\(([^)]*)\))?|\[|\]", RegexOptions.Compiled);
+
+
+            var lowerPattern = @"([a-z])\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*\)";
+            var upperPattern = @"([A-Z])\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*\)";
+            var ruleMatcher = new Regex(lowerPattern, RegexOptions.Compiled);
+            var operatorMatcher = new Regex(upperPattern, RegexOptions.Compiled);
+
+
+            foreach (Match m in ruleMatcher.Matches(baseString))
+            {
+
+                // Buchstabe aus Gruppe 1
+                char ch = m.Groups[1].Value[0];
+                // Floats aus den Gruppen 2–4 parsen
+                float xdiff = float.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+                float ydiff = float.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture);
+                float zdiff = float.Parse(m.Groups[4].Value, CultureInfo.InvariantCulture);
+
+                
+
+                // Zuordnen ins Dictionary
+                Vector3 diffVec = new Vector3(xdiff, ydiff, zdiff);
+
+                string rule = rules[ch];
+
+                string newString = "";
+                foreach (Match match1 in clusterRegex.Matches(rule))
+                {
+                    foreach (Match match2 in operatorMatcher.Matches(match1.Value))
+                    {
+
+                        // Buchstabe aus Gruppe 1
+                        char op = match2.Groups[1].Value[0];
+
+                        float xbase = float.Parse(match2.Groups[2].Value, CultureInfo.InvariantCulture);
+                        float ybase = float.Parse(match2.Groups[3].Value, CultureInfo.InvariantCulture);
+                        float zbase = float.Parse(match2.Groups[4].Value, CultureInfo.InvariantCulture);
+
+                        // Zuordnen ins Dictionary
+                        Vector3 baseVec = new Vector3(xbase, ybase, zbase);
+                        float vecAbs = baseVec.magnitude;
+                        
+
+                        Vector3 targetVec = baseVec /*+ diffVec*/;
+                        //targetVec = targetVec.normalized * vecAbs;
+
+                        newString += op;
+                        newString += targetVec.ToString();
+                    }
+                    
+                }
+
+                //Debug.Log("DEBUG Eigesetzte Regel: " + newString);
+                var tokenMatcher = new Regex($@"([{ch}])\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*\)",
+                                            RegexOptions.Compiled);
+
+                int counter = -1;    // Läuft bei jedem Match hoch
+                int target = 0; // Dein Index, welches Match du ersetzen willst (0-basiert o. 1-basiert — je nachdem)
+
+                baseString = tokenMatcher.Replace(baseString, m =>
+                {
+                    // Erhöhe den Zähler _vor_ dem Vergleich
+                    counter++;
+
+                    if (counter == target)
+                    {
+                        //Debug.Log("DEBUG Replacing match #" + counter + ": " + m.Value);
+                        return newString;
+                    }
+                    else
+                    {
+                        //Debug.Log("DEBUG Skipping match #" + counter + ": " + m.Value);
+                        return m.Value;
+                    }
+                });
+
+
+            }
+
+            return baseString;
+
         }
 
+
+        private string expandCollapsedSystem(string collapsedString, Dictionary<char, string> rules)
+        {
+            var tokenMatcher = new Regex(
+                @"F\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*\)",
+                RegexOptions.Compiled
+            );
+
+            string output = tokenMatcher.Replace(collapsedString, match =>
+            {
+                string rule = rules['F'];
+                var initialPattern = new Regex(@"[a-z]");
+
+                float x = float.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+                float y = float.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+                float z = float.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture);
+
+         
+
+                string editedRule = initialPattern.Replace(rule, match2 => $"{match2.Groups[0].Value}(" + x + "," + y + "," + z + ")");
+
+                
+                return editedRule;
+            });
+
+            Regex xRegex = new Regex("X");
+            string replacedX = xRegex.Replace(output, match => {
+
+                string rule = rules['X'];
+                string extendedRule = "";
+                foreach(char c in rule)
+                {
+                    extendedRule += c;
+                    extendedRule += Vector3.zero.ToString();
+                }
+
+                return extendedRule;
+            });
+
+
+            return replacedX;
+        }
+
+        private string compressSystem(string expandedSystem, Dictionary<char, string> rules)
+        {
+           
+
+            var clusterRegex = new Regex(
+                @"T\([^)]*\)(?:K\([^)]*\))*F\(([^)]*)\)",
+                RegexOptions.Compiled
+            );
+
+            // Ersetze jeden kompletten Match durch "F(<Inhalt von Gruppe1>)"
+            string output = clusterRegex.Replace(expandedSystem, m =>
+            {
+                foreach (var kvp in rules)
+                {
+                    if (kvp.Value == m.Value)
+                    {
+                        return kvp.Value;  // brich ab, sobald du den ersten Treffer hast
+                    }
+                }
+                return m.Value;
+            });
+
+            return output;
+            
+
+        }
+
+
+        private string ExpandLSystemII(string axiom, Dictionary<char, string> rules, int iterations)
+        {
+            string current = axiom; //F
+            Vector3 dirDiff = Vector3.zero;
+
+            //Initiale Ersetzung
+            string baseString = "";
+            foreach (char symbol in axiom)
+            {
+                baseString += axiom;
+                baseString += "(" + dirDiff.x + ", " + dirDiff.y + ", " + dirDiff.z + ")";
+            }
+
+            var initialPattern = new Regex(@"[a-z]");
+            
+            //baseString = initialPattern.Replace(baseString, match => $"{match.Groups[0].Value}(" + dirDiff.x + "," + dirDiff.y + "," + dirDiff.z + ")");
+            Debug.Log("Base String before inflation: " + baseString);
+            string inflatedSystem = "";
+
+            for (int i = 0; i < iterations; i++)
+            {
+                baseString = expandCollapsedSystem(baseString, rules);
+                Debug.Log($"Col After {i} Iteration: " + baseString);
+                inflatedSystem = inflateSystem(baseString, rules); //TKFs
+                string compressedString = compressSystem(inflatedSystem, rules);  //collapsed Strings
+
+                baseString = inflatedSystem;
+                Debug.Log($"inflatedSystem After {i} Iteration: " + inflatedSystem);
+                Debug.Log($"Compressed System After {i} Iteration: " + compressedString);
+                
+            }
+            return inflatedSystem;
+
+        }
 
         public void Generate(string axiom, Dictionary<char, string> rules, int iterations)
         {
-            //string generated = ExpandLSystem(axiom, rules, iterations);
-
-
-            string generatedPara = ExpandLSystemPara(axiom, rules, iterations);
-
-            //InterpretLSystem(generated);
-
-
-            InterpretLSystem(generatedPara);
+            string expanded = ExpandLSystemII(axiom, rules, iterations);
+            InterpretLSystem(expanded);
         }
-
-
-        private string ExpandLSystemPara(string axiom, Dictionary<char, string> rules, int iterations)
-        {
-            string current = axiom;
-            var tokenPattern = new Regex(@"([A-Za-z])(\(([^)]*)\))?|(\[|\])", RegexOptions.Compiled);
-
-            for (int iter = 0; iter < iterations; iter++)
-            {
-                var nextBuilder = new System.Text.StringBuilder();
-                var matches = tokenPattern.Matches(current);
-
-                foreach (Match m in matches)
-                {
-                    string token = m.Value;
-                    char symbol = token[0];
-
-                    if (rules.ContainsKey(symbol))
-                    {
-                        string replacement = rules[symbol];
-
-                        // Versuche, Richtung aus ursprünglichem Symbol zu holen
-                        Vector3 direction;
-                        if (!TryParseVector(token, out direction))
-                        {
-                            // Standard-Richtung, wenn keine Parameter vorhanden (z. B. bei erstem F)
-                            direction = Vector3.forward;
-                        }
-
-                        Quaternion rotation = Quaternion.LookRotation(direction.normalized);
-                        string transformed = TransformReplacement(replacement, rotation);
-                        nextBuilder.Append(transformed);
-                    }
-                    else
-                    {
-                        nextBuilder.Append(token);
-                    }
-                }
-
-                current = nextBuilder.ToString();
-            }
-
-            Debug.Log("Expanded L-System PARA: " + current);
-            return current;
-        }
-
-
-        // Jetzt mit Token-basierter Expansion: ganze F(...)-Token werden erkannt und ersetzt
-        private string ExpandLSystem(string axiom, Dictionary<char, string> rules, int iterations)
-        {
-            string current = axiom;
-            // Regex: Erfasst einzelne Befehle mit optionalen Parametern, z.B. F(1.5), R(0,1,0,25), [, ]
-            var tokenPattern = new Regex(@"([A-Za-z])(\([^)]*\))?|
-                                   (\[|\])", RegexOptions.Compiled);
-
-            for (int iter = 0; iter < iterations; iter++)
-            {
-                var nextBuilder = new System.Text.StringBuilder();
-                var matches = tokenPattern.Matches(current);
-                foreach (Match m in matches)
-                {
-                    // Token ohne Klammern (z.B. "[") oder Befehl mit Parameter (z.B. "F(1.5)")
-                    string token = m.Value;
-                    // Symbol ist der erste Buchstabe bei parametrierten Befehlen oder der Token selbst bei [ ]
-                    char symbol = token[0];
-
-                    if (rules.ContainsKey(symbol))
-                    {
-                        // Ersetze den gesamten Token (z.B. "F(1.5)") durch die Regel für 'F'
-                        nextBuilder.Append(rules[symbol]);
-                    }
-                    else
-                    {
-                        // Alle anderen Tokens (Klammerbefehle wie "[", "]", oder unbekannte Commands) bleiben erhalten
-                        nextBuilder.Append(token);
-                    }
-                }
-                current = nextBuilder.ToString();
-            }
-            return current;
-        }
-
-
 
         private void InterpretLSystem(string lSystem)
         {
-            Stack<TransformInfo> transformStack = new Stack<TransformInfo>();
-            Vector3 position = new Vector3(0.0f, 0.0f, 0.0f);
-            Quaternion rotation = Quaternion.LookRotation(Vector3.up);
+            var transformStack = new Stack<TransformInfo>();
+            Vector3 position = Vector3.zero;
+            Vector3 rotation = Vector3.up;
+            Quaternion rot = Quaternion.FromToRotation(Vector3.up, rotation);
+            
 
-            //Setup for Line drawing
-            List<Vector3> drawPoints = new List<Vector3>();
-            List<List<Vector3>> lines = new List<List<Vector3>>();
+            var drawPoints = new List<Vector3>();
+            var lines = new List<List<Vector3>>();
 
             int i = 0;
             while (i < lSystem.Length)
             {
                 char command = lSystem[i];
 
-                // R(x,y,z,angle): Rotation um beliebige Achse
-                if (command == 'R' && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
-                {
-                    int end = lSystem.IndexOf(')', i + 2);
-                    if (end > i)
-                    {
-                        string content = lSystem.Substring(i + 2, end - (i + 2));
-                        string[] parts = content.Split(',');
-                        if (parts.Length == 4 &&
-                            float.TryParse(parts[0], out float x) &&
-                            float.TryParse(parts[1], out float y) &&
-                            float.TryParse(parts[2], out float z) &&
-                            float.TryParse(parts[3], out float angle))
-                        {
-                            Vector3 axis = new Vector3(x, y, z).normalized;
-                            rotation *= Quaternion.AngleAxis(angle, axis);
-                            i = end + 1;
-                            continue;
-                        }
-                    }
-                }
-
-                // F(l): Vorwärts mit parametrisierter Länge
-                if ((command == 'F' || command == 'K') && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
-                {
-                    int end = lSystem.IndexOf(')', i + 2);
-                    if (end > i)
-                    {
-                        string content = lSystem.Substring(i + 2, end - (i + 2));
-                        string[] parts = content.Split(',');
-
-                        // --- 1) Vektor‐Parameter: F(x,y,z) ---
-                        if (parts.Length == 3
-                            && float.TryParse(parts[0], out float vx)
-                            && float.TryParse(parts[1], out float vy)
-                            && float.TryParse(parts[2], out float vz))
-                        {
-                            Vector3 localVec = new Vector3(vx, vy, vz);
-                            Vector3 worldOffset = localVec;
-
-                            // Liniensegment zeichnen
-
-
-                            // Turtle vorziehen und drehen
-                            drawPoints.Add(position);
-                            position += worldOffset;
-                            //rotation = Quaternion.LookRotation(worldOffset.normalized, Vector3.up);
-
-                            // zum nächsten Token springen
-                            i = end + 1;
-                            continue;
-                        }
-
-                        else if (float.TryParse(content, out float paramLen))
-                        {
-                            Vector3 nextPosition = position + (rotation * Vector3.forward * paramLen);
-                            Vector3 dir = nextPosition - position;
-                            float len = dir.magnitude;
-                            Vector3 center = (position + nextPosition) / 2f;
-
-                            GameObject segment = Instantiate(lineSegmentPrefab, center, Quaternion.LookRotation(dir));
-                            segment.transform.localScale = new Vector3(lineWidth, lineWidth, len);
-                            if (parentObject != null) segment.transform.SetParent(parentObject);
-
-                            drawPoints.Add(position);
-                            position = nextPosition;
-                            i = end + 1;
-                            continue;
-                        }
-                    }
-                }
-
-                // T(dx,dy,dz): Translation
+                // Translation T(x,y,z)
                 if (command == 'T' && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
                 {
-                    lines.Add(drawPoints);
-                    drawPoints = new List<Vector3>();
-
-                    int end = lSystem.IndexOf(')', i + 2);
-                    if (end > i)
+                    int end = lSystem.IndexOf(')', i);
+                    if (end > i && TryParseVector(lSystem.Substring(i, end - i + 1), out Vector3 offset))
                     {
-                        string content = lSystem.Substring(i + 2, end - (i + 2));
-                        string[] parts = content.Split(',');
-                        if (parts.Length == 3 &&
-                            float.TryParse(parts[0], out float dx) &&
-                            float.TryParse(parts[1], out float dy) &&
-                            float.TryParse(parts[2], out float dz))
-                        {
-                            Vector3 offset = new Vector3(dx, dy, dz);
-                            position += offset; //Rotation entfernt
-                            i = end + 1;
-                            continue;
+                        if (drawPoints.Count > 1) lines.Add(drawPoints);
+                        drawPoints = new List<Vector3>();
+                        //TODO: Vector Rotation
+                        if (interpretAsTree) {
+                            offset = Vector3.zero;
                         }
-                    }
+                        rot = Quaternion.FromToRotation(Vector3.up, rotation.normalized);
 
+                        offset = rot * offset;
+
+                        position += offset;
+                        drawPoints.Add(position);
+                    }
+                    i = end + 1;
+                    continue;
                 }
 
-                switch (command)
+                // Movement F(x,y,z) or K(x,y,z)
+                if ((command == 'J' || command == 'K') && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
                 {
-                    case 'F':
-                        Vector3 nextPosition = position + (rotation * Vector3.forward * length);
-                        Vector3 dir = nextPosition - position;
-                        float len = dir.magnitude;
-                        Vector3 center = (position + nextPosition) / 2f;
-
-                        GameObject segment = Instantiate(lineSegmentPrefab, center, Quaternion.LookRotation(dir));
-                        segment.transform.localScale = new Vector3(lineWidth, lineWidth, len);
-                        if (parentObject != null) segment.transform.SetParent(parentObject);
-
-                        position = nextPosition;
-                        break;
-
-                    case '[':
-                        transformStack.Push(new TransformInfo(position, rotation));
-                        break;
-
-                    case ']':
-                        if (transformStack.Count > 0)
+                    int end = lSystem.IndexOf(')', i);
+                    if (end > i && TryParseVector(lSystem.Substring(i, end - i + 1), out Vector3 dir))
+                    {
+                        //Vector Rotation
+                        dir = rot * dir;
+                        Vector3 newPos = position + dir;
+                        
+                        position = newPos;
+                        drawPoints.Add(position);
+                        if (command == 'J')
                         {
-                            var t = transformStack.Pop();
-                            position = t.Position;
-                            rotation = t.Rotation;
+                            rotation = dir;
                         }
-                        break;
+                    }
+                    i = end + 1;
+                    continue;
+                }
+
+                // Branch Push
+                if (command == '[')
+                {
+                    transformStack.Push(new TransformInfo(position, rotation));
+                    i++;
+                    continue;
+                }
+
+                // Branch Pop
+                if (command == ']')
+                {
+                    if (transformStack.Count > 0)
+                    {
+                        if (drawPoints.Count > 1) lines.Add(drawPoints);
+                        drawPoints = new List<Vector3>();
+                        var ti = transformStack.Pop();
+                        position = ti.Position;
+                        rotation = ti.Rotation;
+                    }
+                    i++;
+                    continue;
                 }
 
                 i++;
             }
-            lines.Add(drawPoints);
 
-            foreach (List<Vector3> points in lines)
+            if (drawPoints.Count > 1) lines.Add(drawPoints);
+            foreach (var pts in lines)
             {
-                drawLine(points);
+                drawer.drawLineThroughPoints(pts);
             }
         }
 
         private struct TransformInfo
         {
             public Vector3 Position;
-            public Quaternion Rotation;
-
-            public TransformInfo(Vector3 pos, Quaternion rot)
-            {
-                Position = pos;
-                Rotation = rot;
-            }
+            public Vector3 Rotation;
+            public TransformInfo(Vector3 p, Vector3 r) { Position = p; Rotation = r; }
         }
     }
 }
+
+
+/*
+[T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14) 
+    [T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)]
+    T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)]
+    [T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)
+    [T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)]
+T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)]
+*/

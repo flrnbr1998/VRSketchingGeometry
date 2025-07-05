@@ -15,13 +15,12 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         private LineSketchObject _currentLine;
         private Vector3 _lastPoint;
 
-        
-
-
         [SerializeField] private DefaultReferences defaults;
         [SerializeField] private Material customMaterial;
         [SerializeField] private AdvancedLSystemInterpreter generator;
         [SerializeField] private BrushExample drawer;
+        [SerializeField] private Dictionary<char, string> rules;
+
 
         [SerializeField] private int iterations = 2;
         [SerializeField] private float pointAddInterval = 0.05f;
@@ -143,22 +142,23 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         private void GenerateParaRulesFromMultipleLines(List<LineSketchObject> lines)
         {
+            rules = new Dictionary<char, string>();
             if (lines == null || lines.Count == 0 || lineSegmentPrefab == null) return;
 
-            Dictionary<char, string> rules = new Dictionary<char, string>();
+            
             char symbol = 'F';
+            char lineSymbol = 'a';
             rules[symbol] = "";
+            rules['X'] = "F";
             string axiom = symbol.ToString();
-
-            // Pushes für jeden Linien-Stamm
-            foreach (var line in lines)
-                rules[symbol] += "[";
-
-            bool isFirstLine = true;
+            Vector3 prevEnd = new Vector3(0, 0, 0);
+            int cycleCount = 0;
+            List<char> prevLineSymbols = new List<char>();
 
             // Build rule string pro Linie
             foreach (var line in lines)
             {
+                prevLineSymbols.Add(lineSymbol);
                 var pts = line.GetControlPoints();
                 if (pts.Count < 2) continue;
 
@@ -166,12 +166,14 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 // Ausgangspunkt ist erster Punkt, Ausrichtung spielt keine Rolle mehr
                 Vector3 basePoint = pts[0];
 
-                if (!isFirstLine)
+                Vector3 delta = prevEnd;
+                if (cycleCount > 0)
                 {
-                    Vector3 delta = pts[0] - lines[0].GetControlPoints()[0]; ;
-                    // Direkt Translation und parametrisches F mit Vektor
-                    rule += string.Format("T({0:0.###},{1:0.###},{2:0.###})", delta.x, delta.y, delta.z);
+                    delta = pts[0] - lines[0].GetControlPoints()[0];
                 }
+                // Direkt Translation und parametrisches F mit Vektor
+                rule += string.Format("T({0:0.###},{1:0.###},{2:0.###})", delta.x, delta.y, delta.z);
+
 
 
                 for (int i = 0; i < pts.Count - 1; i++)
@@ -179,9 +181,9 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     // World-space Delta
                     Vector3 worldDelta = pts[i + 1] - pts[i];
 
-                    if (i == pts.Count - 2 || i == 0)
+                    if (i == pts.Count - 2)
                     {
-                        rule += string.Format("F({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
+                        rule += string.Format("J({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
                     }
                     else
                     {
@@ -189,9 +191,43 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     }
                 }
 
-                rule += "]";
-                rules[symbol] += rule;
-                isFirstLine = false;
+                rules[lineSymbol] = rule;
+
+                int sc = 0;
+                string curRule = "";
+
+
+                foreach (char s in prevLineSymbols){
+                    curRule += '[';
+                    curRule += s;
+                    curRule += 'X';
+                    curRule += ']';
+                    /*curRule += '[';
+                    curRule += s;
+                    sc = 0;
+                    foreach (char t in prevLineSymbols)
+                    {
+                        if (sc == prevLineSymbols.Count - 1)
+                        {
+                            curRule += t;
+                        }
+                        else
+                        {
+                            curRule += '[';
+                            curRule += t;
+                            curRule += ']';
+                        }
+                        sc++;
+                    }
+                    curRule += ']';*/
+                }
+
+                rules[symbol] = curRule;
+                prevEnd = pts[0];
+      
+
+                lineSymbol++;
+                cycleCount++;
             }
 
             // Debug-Ausgabe
@@ -204,7 +240,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         
         }
 
-        private void GenerateRulesFromMultipleLines(List<LineSketchObject> lines)
+        /*private void GenerateRulesFromMultipleLines(List<LineSketchObject> lines)
        {
             // 1) Vorbedingung: Keine Linien oder kein Prefab → Abbruch
             if (lines == null || lines.Count == 0 || lineSegmentPrefab == null) return;
@@ -281,7 +317,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
                     float segmentLength = Vector3.Distance(p0, p1);
 
-                    if (i == points.Count - 2)
+                    if (i == 0/*points.Count - 2)
                     {
                         rule += $"F({segmentLength:0.###})";
                       
@@ -314,6 +350,6 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
             // 7) L-System generieren (Iterations-Anzahl beliebig)
             generator.Generate(axiom, rules, iterations);
-        }
+        }*/
     }
 }

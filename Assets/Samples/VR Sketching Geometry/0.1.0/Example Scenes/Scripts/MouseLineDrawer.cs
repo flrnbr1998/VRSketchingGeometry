@@ -152,7 +152,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             generator.parentObject = lSystemParent;
             generator.lineWidth = 0.02f;
             generator.length = Vector3.Distance(controlPoints[0], controlPoints[1]);
-            generator.defaultAngle = 25f;
+            //generator.defaultAngle = 25f;
 
             Debug.Log($"Generated rule: {derivedRule}");
             generator.Generate(axiom, rules, iterations);

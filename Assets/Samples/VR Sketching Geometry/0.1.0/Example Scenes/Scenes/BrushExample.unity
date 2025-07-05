@@ -156,11 +156,11 @@ MonoBehaviour:
   customMaterial: {fileID: 2100000, guid: 4bc5bde4fded4657aeb07971852dec51, type: 2}
   generator: {fileID: 1244478936}
   drawer: {fileID: 1054627444}
-  iterations: 1
+  iterations: 6
   pointAddInterval: 0.1
   minPointDistance: 0.3
   drawDistanceFromCamera: 10
-  difference: {x: 0, y: 20, z: 0}
+  difference: {x: 0, y: 0, z: 0}
   lineSegmentPrefab: {fileID: 1879048506292873826, guid: 18c0d8399752042509f55f4c4d44af48,
     type: 3}
   lSystemParent: {fileID: 0}
@@ -400,6 +400,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   defaults: {fileID: 11400000, guid: 80ac1fe1704d8434eac74bc2c69b9794, type: 2}
   customMaterial: {fileID: 2100000, guid: 4bc5bde4fded4657aeb07971852dec51, type: 2}
+  new_color: {r: 0, g: 0, b: 0, a: 0}
 --- !u!120 &1054627447
 LineRenderer:
   serializedVersion: 2
@@ -536,7 +537,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5eeb09dca2c5746d3992d4a6668dc7e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 5
+  moveSpeed: 20
   rotationSpeed: 100
 --- !u!65 &1221387169
 BoxCollider:
@@ -671,14 +672,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   drawer: {fileID: 1054627444}
-  defaults: {fileID: 11400000, guid: 80ac1fe1704d8434eac74bc2c69b9794, type: 2}
-  customMaterial: {fileID: 2100000, guid: 4bc5bde4fded4657aeb07971852dec51, type: 2}
-  length: 0.5
-  defaultAngle: 25
-  lineWidth: 0.02
+  interpretAsTree: 0
   lineSegmentPrefab: {fileID: 1879048506292873826, guid: 18c0d8399752042509f55f4c4d44af48,
     type: 3}
   parentObject: {fileID: 0}
+  length: 0.5
+  lineWidth: 0.02
 --- !u!1 &1248908167
 GameObject:
   m_ObjectHideFlags: 0
