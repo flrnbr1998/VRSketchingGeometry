@@ -2,26 +2,46 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+using UnityEngine.InputSystem;
+
 public class MovePlayer : MonoBehaviour
 {
 
-    public float moveSpeed = 5f;         // Geschwindigkeit vor/zurück
-    public float rotationSpeed = 100f;   // Drehgeschwindigkeit links/rechts
-    // Start is called before the first frame update
+    public float moveSpeed = 5f;
+    public float rotationSpeed = 100f;
+
+    [SerializeField] private InputActionAsset inputActions;
+
+    private InputAction moveAction;
+    private InputAction rotateAction;
     void Start()
     {
-      
+
+    }
+    void Awake()
+    {
+        var map = inputActions.FindActionMap("Player");
+        moveAction = map.FindAction("Move");
+        rotateAction = map.FindAction("Rotate");
     }
 
-    // Update is called once per frame
+    void OnEnable()
+    {
+        moveAction.Enable();
+        rotateAction.Enable();
+    }
+
+    void OnDisable()
+    {
+        moveAction.Disable();
+        rotateAction.Disable();
+    }
     void Update()
     {
-        // Vorwärts/Rückwärts bewegen
-        float move = Input.GetAxis("Vertical") * moveSpeed * Time.deltaTime;
+        float move = moveAction.ReadValue<float>() * moveSpeed * Time.deltaTime;
         transform.Translate(Vector3.forward * move);
 
-        // Links/Rechts drehen
-        float rotate = Input.GetAxis("Horizontal") * rotationSpeed * Time.deltaTime;
+        float rotate = rotateAction.ReadValue<float>() * rotationSpeed * Time.deltaTime;
         transform.Rotate(Vector3.up, rotate);
     }
 }

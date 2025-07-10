@@ -1,0 +1,189 @@
+{
+    "name": "DrawingControls",
+    "maps": [
+        {
+            "name": "Drawing",
+            "id": "9ca69a0f-d93d-419a-9a2c-dd3db6d220a8",
+            "actions": [
+                {
+                    "name": "AddPoint",
+                    "type": "Button",
+                    "id": "a891b9f4-b551-4d19-9935-4d1ba1718789",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "StartDrawing",
+                    "type": "Button",
+                    "id": "822ae9a7-3840-44bd-a557-aa5443d0a44f",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "FinishLine",
+                    "type": "Button",
+                    "id": "39cfa6a5-4f29-4e89-8073-790b68e5c57c",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "GenerateSystem",
+                    "type": "Button",
+                    "id": "5a55805f-6b30-4a95-accf-645c281220fd",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "PointerPosition",
+                    "type": "Value",
+                    "id": "23b43fe8-9010-4a22-84f5-66761eec7bd0",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "ControllerPosition",
+                    "type": "Value",
+                    "id": "99dd6eba-95c3-466d-8363-2cdd540e5580",
+                    "expectedControlType": "Vector3",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "6a7a2ab9-3e0e-4d93-ace3-d15f69a6d43b",
+                    "path": "<XRController>{RightHand}/{TriggerButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "AddPoint",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2ee3e74f-e2e5-45bc-a9a1-d7f231c245d3",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "AddPoint",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ae67088a-9d1a-497d-bbc9-06efcb1e72cc",
+                    "path": "<XRController>{RightHand}/{TriggerButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "StartDrawing",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5e46dcc6-93f1-4543-93f2-7226d393931b",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "StartDrawing",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "022e306c-bbcc-46c9-90c2-d061d3a9a397",
+                    "path": "<XRController>{RightHand}/secondaryButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "FinishLine",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "44737fae-cd36-4cbc-bb7a-94b0cfe5beb6",
+                    "path": "<Keyboard>/#(K)",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "FinishLine",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "725813f7-b408-42e1-b61b-85218a1c8572",
+                    "path": "<Keyboard>/#(L)",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "GenerateSystem",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3815ed8d-4e79-49cf-bef7-082d3c66bd9c",
+                    "path": "<XRController>{RightHand}/{PrimaryButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "GenerateSystem",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "23c013d0-c437-4447-b0be-5f58ef39689d",
+                    "path": "<Mouse>/position",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "PointerPosition",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "038b5c9f-e317-4342-811a-9e37313b54c5",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "PointerPosition",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3aa72783-f2fd-438b-9bba-84840ff6a061",
+                    "path": "<XRController>{RightHand}/devicePosition",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ControllerPosition",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

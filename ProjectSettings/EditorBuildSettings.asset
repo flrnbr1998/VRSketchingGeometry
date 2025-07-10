@@ -9,6 +9,8 @@ EditorBuildSettings:
     path: Assets/VRSketchingGeometry/Tests/Scenes/CommandTestScene.unity
     guid: 98d92473b9b449549852f2e42e5c911b
   m_configObjects:
+    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 804f4861cf0909b4088d1c3243f14748,
+      type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: b6d58f1ad4b4a4c9db37f40a629feba4,
       type: 2}
     com.unity.xr.openxr.settings4: {fileID: 11400000, guid: ddff95fb908c344ba8b16327cfbac474,

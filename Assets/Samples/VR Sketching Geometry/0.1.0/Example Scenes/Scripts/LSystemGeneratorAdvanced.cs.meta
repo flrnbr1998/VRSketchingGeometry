@@ -3,7 +3,15 @@ guid: 5ae85e46543684407ba14a9ab210148c
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - defaults: {instanceID: 0}
+  - customMaterial: {instanceID: 0}
+  - generator: {instanceID: 0}
+  - drawer: {instanceID: 0}
+  - inputActions: {fileID: -944628639613478452, guid: 79806b36c4f98e14a93040167ea0b876,
+      type: 3}
+  - lineSegmentPrefab: {instanceID: 0}
+  - lSystemParent: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

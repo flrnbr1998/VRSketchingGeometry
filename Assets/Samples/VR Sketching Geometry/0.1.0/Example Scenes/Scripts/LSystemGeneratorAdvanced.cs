@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using VRSketchingGeometry;
 using VRSketchingGeometry.Commands;
@@ -6,6 +7,8 @@ using VRSketchingGeometry.Commands.Line;
 using VRSketchingGeometry.Meshing;
 using VRSketchingGeometry.Serialization;
 using VRSketchingGeometry.SketchObjectManagement;
+
+using UnityEngine.InputSystem;
 
 namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 {
@@ -28,6 +31,19 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         [SerializeField] private float drawDistanceFromCamera = 5f;
         [SerializeField] private Vector3 difference = new Vector3(0.0f, 20.0f, 0.0f);
 
+
+        [Header("Input Actions")]
+        [SerializeField] private InputActionAsset inputActions;
+
+        private InputAction drawAction;
+        private InputAction addPointAction;
+        private InputAction finishLineAction;
+        private InputAction generateRulesAction;
+        private InputAction pointerPositionAction;
+        private InputAction controllerPositionAction;
+        [SerializeField] private Transform rightHandAnchor;
+
+
         [Header("L-System Settings")]
         [SerializeField] private GameObject lineSegmentPrefab;
         [SerializeField] private Transform lSystemParent;
@@ -47,16 +63,15 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             _sketchWorld = Instantiate(defaults.SketchWorldPrefab).GetComponent<SketchWorld>();
             _brush = CreateLineBrush(16, 0.02f, 12);
         }
-
         void Update()
         {
-            if (Input.GetMouseButtonDown(1))
+            if (drawAction.triggered)
             {
                 TryStartLineFromMouse();
                 timeSinceLastPoint = 0f;
             }
 
-            if (Input.GetMouseButton(1))
+            if (addPointAction.IsPressed())
             {
                 timeSinceLastPoint += Time.deltaTime;
                 if (timeSinceLastPoint >= pointAddInterval && TryAddPointFromMouse())
@@ -65,46 +80,72 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 }
             }
 
-            if (Input.GetMouseButtonUp(1) && _currentLine != null)
+            if (addPointAction.WasReleasedThisFrame())
             {
                 recordedLines.Add(_currentLine);
                 Debug.Log("Linie zum L-System hinzugefügt.");
                 _currentLine = null;
             }
 
-            if (Input.GetMouseButtonUp(1))
+            if (finishLineAction.triggered && _currentLine != null)
             {
+                recordedLines.Add(_currentLine);
+                Debug.Log("Linie zum L-System hinzugefügt.");
                 _currentLine = null;
-                drawer.drawLineThroughPoints(line);
+
+                //drawer.drawLineThroughPoints(line);
                 line.Clear();
             }
 
-            if (Input.GetKeyDown(KeyCode.K) && _currentLine != null)
+            if (generateRulesAction.triggered && recordedLines.Count > 0)
             {
-                recordedLines.Add(_currentLine);
-                Debug.Log("Linie zum L-System hinzugefügt.");
-                _currentLine = null;
-            }
-
-            if (Input.GetKeyDown(KeyCode.L) && recordedLines.Count > 0)
-            {
-                //GenerateRulesFromMultipleLines(recordedLines);
                 GenerateParaRulesFromMultipleLines(recordedLines);
-                //recordedLines.Clear();
             }
+        }
+        
+
+        void Awake()
+        {
+            var map = inputActions.FindActionMap("Drawing");
+            drawAction = map.FindAction("StartDrawing");
+            addPointAction = map.FindAction("AddPoint");
+            finishLineAction = map.FindAction("FinishLine");
+            generateRulesAction = map.FindAction("GenerateSystem");
+            pointerPositionAction = map.FindAction("PointerPosition");
+            controllerPositionAction = map.FindAction("ControllerPosition");
+        }
+
+        void OnEnable()
+        {
+            drawAction.Enable();
+            addPointAction.Enable();
+            finishLineAction.Enable();
+            generateRulesAction.Enable();
+            pointerPositionAction.Enable();
+            controllerPositionAction.Enable();
+        }
+
+        void OnDisable()
+        {
+            drawAction.Disable();
+            addPointAction.Disable();
+            finishLineAction.Disable();
+            generateRulesAction.Disable();
+            pointerPositionAction.Disable();
+            controllerPositionAction.Disable();
         }
 
         private void TryStartLineFromMouse()
         {
             Vector3 drawPoint = GetMousePointInSpace();
-            _currentLine = Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
-            _currentLine.name = "DrawnLine";
+            //_currentLine = Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
+            //_currentLine.name = "DrawnLine";
 
             line.Add(drawPoint);
+            //LineBrush newBrush = CreateLineBrush(32, 1f, 64);
+            //Debug.Log(newBrush.ToString());
 
-            Invoker.ExecuteCommand(new SetBrushCommand(_currentLine, _brush));
-            Invoker.ExecuteCommand(new AddObjectToSketchWorldRootCommand(_currentLine, _sketchWorld));
-            Invoker.ExecuteCommand(new AddControlPointCommand(_currentLine, drawPoint));
+            _currentLine = drawer.startNewLine(drawPoint);
             _lastPoint = drawPoint;
         }
 
@@ -116,7 +157,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 if (Vector3.Distance(_lastPoint, drawPoint) >= minPointDistance)
                 {
                     line.Add(drawPoint);
-                    Invoker.ExecuteCommand(new AddControlPointCommand(_currentLine, drawPoint));
+                    drawer.addPointToCurrentLine(drawPoint);
                     _lastPoint = drawPoint;
                     return true;
                 }
@@ -124,12 +165,22 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             return false;
         }
 
+        [SerializeField] private bool useControllerPosition = true;
+
+
+
         private Vector3 GetMousePointInSpace()
         {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition + difference);
+            if (useControllerPosition)
+            {
+                //return controllerPositionAction.ReadValue<Vector3>();
+                return rightHandAnchor.position;
+            }
+
+            Vector2 mousePos = pointerPositionAction.ReadValue<Vector2>();
+            Ray ray = Camera.main.ScreenPointToRay(mousePos);
             return ray.GetPoint(drawDistanceFromCamera);
         }
-
         private LineBrush CreateLineBrush(int resolution, float scale, int interpolationSteps)
         {
             return new LineBrush
@@ -172,7 +223,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     delta = pts[0] - lines[0].GetControlPoints()[0];
                 }
                 // Direkt Translation und parametrisches F mit Vektor
-                rule += string.Format("T({0:0.###},{1:0.###},{2:0.###})", delta.x, delta.y, delta.z);
+                rule += string.Format(CultureInfo.InvariantCulture, "T({0:0.###},{1:0.###},{2:0.###})", delta.x, delta.y, delta.z);
 
 
 
@@ -183,11 +234,11 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
                     if (i == pts.Count - 2)
                     {
-                        rule += string.Format("J({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
+                        rule += string.Format(CultureInfo.InvariantCulture, "J({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
                     }
                     else
                     {
-                        rule += string.Format("K({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
+                        rule += string.Format(CultureInfo.InvariantCulture, "K({0:0.###},{1:0.###},{2:0.###})", worldDelta.x, worldDelta.y, worldDelta.z);
                     }
                 }
 
@@ -240,116 +291,5 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         
         }
 
-        /*private void GenerateRulesFromMultipleLines(List<LineSketchObject> lines)
-       {
-            // 1) Vorbedingung: Keine Linien oder kein Prefab → Abbruch
-            if (lines == null || lines.Count == 0 || lineSegmentPrefab == null) return;
-
-            // 2) Setup für L-System: Axiom und Regelsatz
-            Dictionary<char, string> rules = new Dictionary<char, string>();
-            string axiom = "";
-            char symbol = 'F';
-            rules.Add(symbol, "");  // Ein Symbol F mit leerer Regel
-            axiom += symbol;
-
-            // Zustände der vorherigen Linie merken
-            Quaternion? prevRotation = Quaternion.LookRotation(Vector3.up);
-            Vector3 prevEndPoint = Vector3.zero;
-
-            // 3) PROBLEM: Unbalancierte Pushes
-            // Fügt für jede Linie nur ein '[' ein, aber Pop (']') später nur pro Linie im zweiten Loop.
-            foreach (LineSketchObject line in lines)
-                    {
-                        rules[symbol] += '[';
-                    }
-
-            // 4) Übersetze jede Linie in eine Regel-Folge
-            foreach (LineSketchObject line in lines)
-            {
-                List<Vector3> points = line.GetControlPoints();
-                if (points.Count < 3) continue;  // zu kurze Linie ignorieren
-
-                string rule = "";
-                //rule += "[";
-                // 4.1) Erste Segmentrichtung bestimmen
-                Vector3 prevDir = (points[1] - points[0]).normalized;
-                Quaternion currentRotation = Quaternion.LookRotation(prevDir, Vector3.up);
-
-                // 4.2) Falls nicht erste Linie: Pop + Translation + Rotation
-                if (prevRotation.HasValue)
-                {
-                    
-                    // PROBLEM: offset wird hier falsch verwendet (Welt vs. Turtle)
-                    Vector3 offset = points[0] - lines[0].GetControlPoints()[0] ;                      // ← PROBLEM: kein prevEndPoint-Abzug
-                    rule += $"T({offset.x:0.###},{offset.y:0.###},{offset.z:0.###})";  // PROBLEM: ungefiltert im Welt-KS
-
-                    // Rotation von letzte Ausrichtung zu neuer Ausrichtung
-                    Quaternion delta = Quaternion.Inverse(prevRotation.Value) * currentRotation;
-                    delta.ToAngleAxis(out float angle, out Vector3 axis);
-                    if (angle > 1f)
-                    {
-                        axis.Normalize();
-                        rule += $"R({axis.x:0.###},{axis.y:0.###},{axis.z:0.###},{angle:0.#})";
-                    }
-                }
-
-
-
-                // 4.3) Immer ein F für das erste Segment
-
-                // 4.4) Für jedes weitere Segment: Rotation + F
-                for (int i = 0; i < points.Count - 1; i++)
-                {
-                    Vector3 p0 = points[i];
-                    Vector3 p1 = points[i + 1];
-
-                    Vector3 dir = (points[i + 1] - points[i]).normalized;
-                    Quaternion nextRotation = Quaternion.LookRotation(dir, Vector3.up);
-
-                    Quaternion delta = Quaternion.Inverse(currentRotation) * nextRotation;
-                    delta.ToAngleAxis(out float angle, out Vector3 axis);
-
-                    if (angle > 1f)
-                    {
-                        axis.Normalize();
-                        rule += $"R({axis.x:0.###},{axis.y:0.###},{axis.z:0.###},{angle:0.#})";
-                    }
-
-                    float segmentLength = Vector3.Distance(p0, p1);
-
-                    if (i == 0/*points.Count - 2)
-                    {
-                        rule += $"F({segmentLength:0.###})";
-                      
-                    }
-                    else
-                    {
-                        rule += $"K({segmentLength:0.###})";
-                    }
-                    currentRotation = nextRotation;
-                }
-
-                rule += "]";
-                // 4.5) Regel anhängen
-                rules[symbol] += rule;
-                //axiom += symbol;   // bisher nicht genutzt
-              
-                // 4.6) aktuellen Endpunkt und Rotation merken
-                prevRotation = Quaternion.LookRotation(Vector3.up);
-                prevEndPoint = points[points.Count - 1];
-            }
-
-
-
-            // 6) Debug: Axiom und Regeln ausgeben
-            Debug.Log("AXIOM: " + axiom);
-            foreach (var kvp in rules)
-            {
-                Debug.Log($"{kvp.Key} → {kvp.Value}");
-            }
-
-            // 7) L-System generieren (Iterations-Anzahl beliebig)
-            generator.Generate(axiom, rules, iterations);
-        }*/
     }
 }

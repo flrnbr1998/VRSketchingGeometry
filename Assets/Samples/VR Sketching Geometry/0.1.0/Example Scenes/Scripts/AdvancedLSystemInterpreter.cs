@@ -6,7 +6,6 @@ using System.Text;
 
 using System;
 using System.Globalization;
-using System.Text.RegularExpressions;
 
 using VRSketchingGeometry;
 using VRSketchingGeometry.Commands;
@@ -49,26 +48,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             return false;
         }
 
-        private string TransformReplacement(string replacement, Quaternion rotation)
-        {
-            var vectorCommandPattern = new Regex(@"([A-Za-z])\(([^)]+)\)");
-            return vectorCommandPattern.Replace(replacement, match =>
-            {
-                string cmd = match.Groups[1].Value;
-                string[] parts = match.Groups[2].Value.Split(',');
-                if (parts.Length != 3) return match.Value;
-                if (float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x) &&
-                    float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y) &&
-                    float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float z))
-                {
-                    Vector3 original = new Vector3(x, y, z);
-                    Vector3 rotated = rotation * original;
-                    return string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                        "{0}({1:0.###},{2:0.###},{3:0.###})", cmd, rotated.x, rotated.y, rotated.z);
-                }
-                return match.Value;
-            });
-        }
+
 
         private string inflateSystem(string baseString, Dictionary<char, string> rules)
         {
@@ -101,8 +81,10 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 Vector3 diffVec = new Vector3(xdiff, ydiff, zdiff);
 
                 string rule = rules[ch];
-
+                Debug.Log(rule);
                 string newString = "";
+
+
                 foreach (Match match1 in clusterRegex.Matches(rule))
                 {
                     foreach (Match match2 in operatorMatcher.Matches(match1.Value))
@@ -125,6 +107,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
                         newString += op;
                         newString += targetVec.ToString();
+
+                        Debug.Log("DEBUG new String:" +newString);
                     }
                     
                 }
@@ -155,6 +139,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
 
             }
+
+
 
             return baseString;
 
@@ -253,7 +239,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             for (int i = 0; i < iterations; i++)
             {
                 baseString = expandCollapsedSystem(baseString, rules);
-                Debug.Log($"Col After {i} Iteration: " + baseString);
+                Debug.Log($"Colapsed Expanded After {i} Iteration: " + baseString);
                 inflatedSystem = inflateSystem(baseString, rules); //TKFs
                 string compressedString = compressSystem(inflatedSystem, rules);  //collapsed Strings
 
@@ -361,6 +347,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             if (drawPoints.Count > 1) lines.Add(drawPoints);
             foreach (var pts in lines)
             {
+                Debug.Log(pts);
                 drawer.drawLineThroughPoints(pts);
             }
         }

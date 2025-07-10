@@ -38,6 +38,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         private static readonly CommandInvoker Invoker = new CommandInvoker();
 
         public Color new_color;
+
+        private LineSketchObject _currentline;
         
         void Start()
         {
@@ -52,7 +54,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             
             //Defining the properties of the various brushes
             _minimalisticBrush = CreateLineBrush(3, 1f, 2);
-            _fineBrush = CreateLineBrush(32, 1f, 64);
+            _fineBrush = CreateLineBrush(16, 0.2f, 64);
             _roughBrush = CreateLineBrush(8, 1f, 8); ;
             _bigBrush = CreateLineBrush(32, 4f, 32);
             
@@ -190,7 +192,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
            
 
             //Setting the properties of the new LineSketchObject with the given LineBrush
-            Invoker.ExecuteCommand(new SetBrushCommand(lineSketchObject, _bigBrush));
+            Invoker.ExecuteCommand(new SetBrushCommand(lineSketchObject, _fineBrush));
 
 
             //Attaching the new LineSketchObject to the SketchWorld
@@ -205,6 +207,36 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         }
 
+        public LineSketchObject startNewLine(Vector3 startPoint)
+        {
+            //Create a LineSketchObject
+            _currentline =
+                Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
+
+            LineBrush newBrush = CreateLineBrush(32, 1f, 64);
+
+
+
+            //Setting the properties of the new LineSketchObject with the given LineBrush
+            Invoker.ExecuteCommand(new SetBrushCommand(_currentline, _fineBrush));
+
+
+            //Attaching the new LineSketchObject to the SketchWorld
+            Invoker.ExecuteCommand(new AddObjectToSketchWorldRootCommand(_currentline, _sketchWorld));
+
+      
+            Invoker.ExecuteCommand(new AddControlPointCommand(_currentline, startPoint));
+            
+
+            ChangeLineMaterialColorTo(new_color, _currentline);
+
+            return _currentline;
+        }
+
+        public void addPointToCurrentLine(Vector3 currentPoint)
+        {
+            Invoker.ExecuteCommand(new AddControlPointCommand(_currentline, currentPoint));
+        }
 
     }
 }
