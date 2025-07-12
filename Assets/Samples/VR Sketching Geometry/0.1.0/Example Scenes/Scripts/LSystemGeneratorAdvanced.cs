@@ -138,12 +138,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         private void TryStartLineFromMouse()
         {
             Vector3 drawPoint = GetMousePointInSpace();
-            //_currentLine = Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
-            //_currentLine.name = "DrawnLine";
-
             line.Add(drawPoint);
-            //LineBrush newBrush = CreateLineBrush(32, 1f, 64);
-            //Debug.Log(newBrush.ToString());
+
 
             _currentLine = drawer.startNewLine(drawPoint);
             _lastPoint = drawPoint;

@@ -6,6 +6,8 @@ using VRSketchingGeometry.Commands.Line;
 using VRSketchingGeometry.Meshing;
 using VRSketchingGeometry.Serialization;
 using VRSketchingGeometry.SketchObjectManagement;
+using UnityEngine.UI;
+using Meta.XR.ImmersiveDebugger.UserInterface;
 
 namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 {
@@ -37,7 +39,15 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         //Creates a CommandInvoker that is necessary to execute commands.
         private static readonly CommandInvoker Invoker = new CommandInvoker();
 
-        public Color new_color;
+        [SerializeField] private Slider colorSlider;
+        [SerializeField] private Image colorPreview;
+        [SerializeField] private Color new_color = Color.cyan;
+        
+        
+        [SerializeField] private Slider thickSlider; 
+        [SerializeField] private float thickness = 0.2f;
+        [SerializeField] private int interpolationSteps = 32;
+
 
         private LineSketchObject _currentline;
         
@@ -213,12 +223,12 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             _currentline =
                 Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
 
-            LineBrush newBrush = CreateLineBrush(32, 1f, 64);
+            LineBrush newBrush = CreateLineBrush(32, thickness, 64);
 
 
 
             //Setting the properties of the new LineSketchObject with the given LineBrush
-            Invoker.ExecuteCommand(new SetBrushCommand(_currentline, _fineBrush));
+            Invoker.ExecuteCommand(new SetBrushCommand(_currentline, newBrush));
 
 
             //Attaching the new LineSketchObject to the SketchWorld
@@ -236,6 +246,21 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         public void addPointToCurrentLine(Vector3 currentPoint)
         {
             Invoker.ExecuteCommand(new AddControlPointCommand(_currentline, currentPoint));
+        }
+
+
+        public void setLineThickness(float lineThickness)
+        {
+            thickness = thickSlider.value;
+            Debug.Log(thickness);
+        }
+
+
+        public void setColor()
+        {
+            new_color = Color.HSVToRGB(colorSlider.value, 1f, 1f);
+            colorPreview.color = new_color;
+            Debug.Log(new_color);
         }
 
     }
