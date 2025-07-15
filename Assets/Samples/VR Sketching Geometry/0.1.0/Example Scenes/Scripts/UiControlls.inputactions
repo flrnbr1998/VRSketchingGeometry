@@ -1,0 +1,45 @@
+{
+    "name": "UiControlls",
+    "maps": [
+        {
+            "name": "HideShowUI",
+            "id": "a32b6f0f-555d-4363-96cd-84b74b10b71a",
+            "actions": [
+                {
+                    "name": "New action",
+                    "type": "Button",
+                    "id": "5a3ce80b-de90-408d-8ab4-fe11cf29b77c",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "d25f6434-c228-4ef5-8763-81861e3b046a",
+                    "path": "<XRController>{LeftHand}/{GripButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "New action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "cd5dffd2-03ca-4cb4-a878-beb2aaffb9be",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "New action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

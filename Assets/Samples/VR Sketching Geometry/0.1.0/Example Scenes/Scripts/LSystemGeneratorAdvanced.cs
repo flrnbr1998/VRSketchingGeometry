@@ -37,10 +37,11 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         private InputAction drawAction;
         private InputAction addPointAction;
-        private InputAction finishLineAction;
+        private InputAction RecordLSystemAction;
         private InputAction generateRulesAction;
         private InputAction pointerPositionAction;
         private InputAction controllerPositionAction;
+        private InputAction deletePointAction;
         [SerializeField] private Transform rightHandAnchor;
 
 
@@ -49,7 +50,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         [SerializeField] private Transform lSystemParent;
 
         private float timeSinceLastPoint = 0f;
-        private SketchWorld _sketchWorld;
+        
         private static readonly CommandInvoker Invoker = new CommandInvoker();
 
         private List<LineSketchObject> recordedLines = new List<LineSketchObject>();
@@ -60,7 +61,6 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         {
             var brushReference = Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
             brushReference.gameObject.SetActive(false);
-            _sketchWorld = Instantiate(defaults.SketchWorldPrefab).GetComponent<SketchWorld>();
             _brush = CreateLineBrush(16, 0.02f, 12);
         }
         void Update()
@@ -87,11 +87,10 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 _currentLine = null;
             }
 
-            if (finishLineAction.triggered && _currentLine != null)
+            if (RecordLSystemAction.triggered)
             {
-                recordedLines.Add(_currentLine);
+                recordedLines = new List<LineSketchObject>();
                 Debug.Log("Linie zum L-System hinzugefügt.");
-                _currentLine = null;
 
                 //drawer.drawLineThroughPoints(line);
                 line.Clear();
@@ -101,6 +100,10 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             {
                 GenerateParaRulesFromMultipleLines(recordedLines);
             }
+            if (deletePointAction.IsPressed())
+            {
+                deletePoints();
+            }
         }
         
 
@@ -109,30 +112,33 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             var map = inputActions.FindActionMap("Drawing");
             drawAction = map.FindAction("StartDrawing");
             addPointAction = map.FindAction("AddPoint");
-            finishLineAction = map.FindAction("FinishLine");
+            RecordLSystemAction = map.FindAction("FinishLine");
             generateRulesAction = map.FindAction("GenerateSystem");
             pointerPositionAction = map.FindAction("PointerPosition");
             controllerPositionAction = map.FindAction("ControllerPosition");
+            deletePointAction = map.FindAction("DeletePoints");
         }
 
         void OnEnable()
         {
             drawAction.Enable();
             addPointAction.Enable();
-            finishLineAction.Enable();
+            RecordLSystemAction.Enable();
             generateRulesAction.Enable();
             pointerPositionAction.Enable();
             controllerPositionAction.Enable();
+            deletePointAction.Enable();
         }
 
         void OnDisable()
         {
             drawAction.Disable();
             addPointAction.Disable();
-            finishLineAction.Disable();
+            RecordLSystemAction.Disable();
             generateRulesAction.Disable();
             pointerPositionAction.Disable();
             controllerPositionAction.Disable();
+            deletePointAction.Disable();
         }
 
         private void TryStartLineFromMouse()
@@ -143,6 +149,12 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
             _currentLine = drawer.startNewLine(drawPoint);
             _lastPoint = drawPoint;
+        }
+
+        private void deletePoints()
+        {
+            Vector3 drawPoint = GetMousePointInSpace();
+            drawer.deletePoints(drawPoint);
         }
 
         private bool TryAddPointFromMouse()
@@ -187,7 +199,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             };
         }
 
-        private void GenerateParaRulesFromMultipleLines(List<LineSketchObject> lines)
+        public void GenerateParaRulesFromMultipleLines(List<LineSketchObject> lines)
         {
             rules = new Dictionary<char, string>();
             if (lines == null || lines.Count == 0 || lineSegmentPrefab == null) return;
@@ -249,24 +261,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     curRule += s;
                     curRule += 'X';
                     curRule += ']';
-                    /*curRule += '[';
-                    curRule += s;
-                    sc = 0;
-                    foreach (char t in prevLineSymbols)
-                    {
-                        if (sc == prevLineSymbols.Count - 1)
-                        {
-                            curRule += t;
-                        }
-                        else
-                        {
-                            curRule += '[';
-                            curRule += t;
-                            curRule += ']';
-                        }
-                        sc++;
-                    }
-                    curRule += ']';*/
+
                 }
 
                 rules[symbol] = curRule;

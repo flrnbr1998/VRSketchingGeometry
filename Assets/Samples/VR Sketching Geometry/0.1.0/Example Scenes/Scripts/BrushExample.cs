@@ -8,6 +8,7 @@ using VRSketchingGeometry.Serialization;
 using VRSketchingGeometry.SketchObjectManagement;
 using UnityEngine.UI;
 using Meta.XR.ImmersiveDebugger.UserInterface;
+using System.Linq;
 
 namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 {
@@ -47,9 +48,12 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         [SerializeField] private Slider thickSlider; 
         [SerializeField] private float thickness = 0.2f;
         [SerializeField] private int interpolationSteps = 32;
+        [SerializeField] private LayerMask lineSketchLayer;
 
 
         private LineSketchObject _currentline;
+
+        private List<LineSketchObject> _lines;
         
         void Start()
         {
@@ -68,6 +72,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             _roughBrush = CreateLineBrush(8, 1f, 8); ;
             _bigBrush = CreateLineBrush(32, 4f, 32);
             
+
+            _lines = new List<LineSketchObject>();
             //Drawing the lines and applying colors to them
             //ChangeLineMaterialColorTo(Color.red, DrawLineWithBrush(_minimalisticBrush));
             //ChangeLineMaterialColorTo(Color.green, DrawLineWithBrush(_roughBrush));
@@ -196,6 +202,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             //Create a LineSketchObject
             LineSketchObject lineSketchObject =
                 Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
+            lineSketchObject.gameObject.layer = LayerMask.NameToLayer("LineSketch");
 
             LineBrush newBrush = CreateLineBrush(32, 1f, 64);
 
@@ -222,6 +229,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             //Create a LineSketchObject
             _currentline =
                 Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
+            _currentline.gameObject.layer = LayerMask.NameToLayer("LineSketch");
 
             LineBrush newBrush = CreateLineBrush(32, thickness, 64);
 
@@ -261,6 +269,44 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             new_color = Color.HSVToRGB(colorSlider.value, 1f, 1f);
             colorPreview.color = new_color;
             Debug.Log(new_color);
+        }
+
+
+        public void  deletePoints(Vector3 worldPoint)
+        {
+            Collider[] hits = Physics.OverlapSphere(worldPoint, thickness, lineSketchLayer);
+            List<LineSketchObject> new_lines = new List<LineSketchObject>();
+            foreach (Collider hit in hits)
+            {
+                LineSketchObject line = hit.GetComponentInParent<LineSketchObject>();
+                if (line != null)
+                {
+                    _lines.Remove(line);
+                    line.DeleteControlPoints(worldPoint,thickness/2,out new_lines);
+                    
+                   
+                    foreach(LineSketchObject newLine in new_lines)
+                    {
+                        if (newLine.GetControlPoints().Count <= 1)
+                        {
+                            Destroy(newLine);
+                        }
+                        else
+                        {
+                            _lines.Add(newLine);
+                        }
+                    }
+
+                    if (line.GetControlPoints() != null)
+                    {
+                        if(line.GetControlPoints().Count <= 1)
+                        {
+                            Destroy(line);
+                        }
+                    }
+                }
+            }
+            
         }
 
     }
