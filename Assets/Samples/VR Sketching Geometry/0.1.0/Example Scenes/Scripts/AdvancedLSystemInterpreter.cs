@@ -13,12 +13,13 @@ using VRSketchingGeometry.Commands.Line;
 using VRSketchingGeometry.Meshing;
 using VRSketchingGeometry.Serialization;
 using VRSketchingGeometry.SketchObjectManagement;
+using System.Threading.Tasks;
 
 namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 {
     public class AdvancedLSystemInterpreter : MonoBehaviour
     {
-        [SerializeField] private BrushExample drawer;
+        [SerializeField] private Drawer drawer;
         [SerializeField] private Boolean interpretAsTree = true;
 
 
@@ -26,6 +27,8 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         public Transform parentObject;
         public float length = 0.5f;
         public float lineWidth = 0.02f;
+
+        private Dictionary<LSystem, Dictionary<int, string>> interpretedLSystems = new Dictionary<LSystem, Dictionary<int, string>>();
 
         private bool TryParseVector(string token, out Vector3 vec)
         {
@@ -252,22 +255,121 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         }
 
-        public void Generate(string axiom, Dictionary<char, string> rules, int iterations)
+        public void Generate(LSystem lSystem, int iterations, Vector3 controllerPosition, Vector3 playerDirection)
         {
-            string expanded = ExpandLSystemII(axiom, rules, iterations);
-            InterpretLSystem(expanded);
+            string expanded = ExpandLSystemII(lSystem.Axiom, lSystem.Rules, iterations);
+
+            StartCoroutine(InterpretLSystemRotated(expanded, controllerPosition, playerDirection));
         }
 
-        private void InterpretLSystem(string lSystem)
+
+        private IEnumerator InterpretLSystemRotated(string lSystem, Vector3 controllerPosition, Vector3 playerDirection)
         {
-            var transformStack = new Stack<TransformInfo>();
-            Vector3 position = Vector3.zero;
-            Vector3 rotation = Vector3.up;
-            Quaternion rot = Quaternion.FromToRotation(Vector3.up, rotation);
-            
+            var transformStack = new Stack<(Vector3 pos, Quaternion rot)>();
+            Vector3 position = controllerPosition;
+            Quaternion currentRot = Quaternion.FromToRotation(Vector3.up, playerDirection.normalized);
+
+            GameObject lSystemParent = new GameObject("LSystemParent");
+            lSystemParent.transform.position = controllerPosition;
 
             var drawPoints = new List<Vector3>();
             var lines = new List<List<Vector3>>();
+
+            int i = 0;
+            while (i < lSystem.Length)
+            {
+                char command = lSystem[i];
+
+                // ───── Translation ─────────────────────────────────────────
+                if (command == 'T' && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
+                {
+                    int end = lSystem.IndexOf(')', i);
+                    if (end > i && TryParseVector(lSystem.Substring(i, end - i + 1), out Vector3 offset))
+                    {
+                        if (drawPoints.Count > 1) lines.Add(drawPoints);
+                        drawPoints = new List<Vector3>();
+
+                        if (interpretAsTree) offset = Vector3.zero;
+                        // wende aktuelle Rotation an:
+                        offset = currentRot * offset;
+                        position += offset;
+                        drawPoints.Add(position);
+                    }
+                    i = end + 1;
+                    continue;
+                }
+
+                // ───── Bewegung ────────────────────────────────────────────
+                if ((command == 'J' || command == 'K') && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
+                {
+                    int end = lSystem.IndexOf(')', i);
+                    if (end > i && TryParseVector(lSystem.Substring(i, end - i + 1), out Vector3 dirLocal))
+                    {
+                        Vector3 worldDir = currentRot * dirLocal;
+                        position += worldDir;
+                        drawPoints.Add(position);
+
+                        if (command == 'J')
+                        {
+                            // update lokale Orientierung
+                            Quaternion localRot = Quaternion.FromToRotation(Vector3.up, dirLocal.normalized);
+                            currentRot = currentRot * localRot;
+                        }
+                    }
+                    i = end + 1;
+                    continue;
+                }
+
+                // ───── Branch Push ─────────────────────────────────────────
+                if (command == '[')
+                {
+                    transformStack.Push((position, currentRot));
+                    i++;
+                    continue;
+                }
+
+                // ───── Branch Pop ──────────────────────────────────────────
+                if (command == ']')
+                {
+                    if (transformStack.Count > 0)
+                    {
+                        if (drawPoints.Count > 1) lines.Add(drawPoints);
+                        drawPoints = new List<Vector3>();
+                        (position, currentRot) = transformStack.Pop();
+                    }
+                    i++;
+                    continue;
+                }
+
+                i++;
+            }
+
+            if (drawPoints.Count > 1) lines.Add(drawPoints);
+           
+            foreach (var pts in lines)
+            {
+                var lineObj = drawer.drawLineThroughPoints(pts);
+                yield return new WaitForSeconds(0.1f);
+                lineObj.transform.parent = lSystemParent.transform;
+            }
+        }
+
+        //Working but doesnt Rotate
+        private void InterpretLSystem(string lSystem, Vector3 controllerPosition, Vector3 playerDirection)
+        {
+            var transformStack = new Stack<TransformInfo>();
+            Vector3 position = controllerPosition;
+            Vector3 rotation = Vector3.up;
+            Quaternion rot;
+            
+            GameObject lSystemParent = new GameObject("LSystemParent");
+            lSystemParent.transform.position = controllerPosition;
+            lSystemParent.transform.rotation = Quaternion.identity;
+
+            var drawPoints = new List<Vector3>();
+            var lines = new List<List<Vector3>>();
+
+            rot = Quaternion.FromToRotation(Vector3.up, rotation.normalized);
 
             int i = 0;
             while (i < lSystem.Length)
@@ -286,8 +388,9 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                         if (interpretAsTree) {
                             offset = Vector3.zero;
                         }
-                        rot = Quaternion.FromToRotation(Vector3.up, rotation.normalized);
 
+                        rot = Quaternion.FromToRotation(Vector3.up, rotation.normalized);
+                       
                         offset = rot * offset;
 
                         position += offset;
@@ -344,11 +447,13 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 i++;
             }
 
+            LineSketchObject currentLine = null;
             if (drawPoints.Count > 1) lines.Add(drawPoints);
             foreach (var pts in lines)
             {
                 Debug.Log(pts);
-                drawer.drawLineThroughPoints(pts);
+                currentLine = drawer.drawLineThroughPoints(pts);
+                currentLine.transform.parent = lSystemParent.transform;
             }
         }
 
@@ -362,11 +467,3 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 }
 
 
-/*
-[T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14) 
-    [T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)]
-    T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)]
-    [T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)
-    [T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)]
-T(0.00, 0.00, 0.00)K(-0.09, 0.25, 0.19)K(-0.18, 0.44, 0.30)K(-0.47, 0.67, 0.36)K(-0.42, 0.59, 0.24)K(-0.62, 0.57, 0.12)K(-0.47, 0.40, 0.03)K(-0.48, 0.40, -0.02)K(-0.65, 0.62, -0.07)K(-1.10, 1.43, -0.25)K(-0.69, 1.45, -0.33)K(-0.31, 1.14, -0.30)F(-0.07, 0.50, -0.14)]
-*/

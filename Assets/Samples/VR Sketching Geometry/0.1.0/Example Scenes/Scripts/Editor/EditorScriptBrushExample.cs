@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts.Editor
 {
-    [CustomEditor(typeof(BrushExample))]
+    [CustomEditor(typeof(Drawer))]
     public class EditorScriptBrushExample : UnityEditor.Editor
     {
         private static int _resolution = 3;
@@ -30,7 +30,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts.Editor
             EditorGUILayout.HelpBox("Use the fields below to interact with the scene at runtime",
                 MessageType.Info);
 
-            BrushExample brushScript = (BrushExample) target;
+            Drawer brushScript = (Drawer) target;
 
             _resolution = EditorGUILayout.IntField("Resolution:", _resolution);
             _scale = EditorGUILayout.FloatField("Scale:", _scale);

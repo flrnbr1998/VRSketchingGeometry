@@ -19,22 +19,16 @@ public class LSystem
     public Dictionary<char, string> Rules = new Dictionary<char, string>();
 
     /// <summary>
-    /// Anzahl der Iterationen für das L-System.
-    /// </summary>
-    public int Iterations;
-
-    /// <summary>
     /// Optional: Liste der ursprünglich gezeichneten Linienpunkte.
     /// </summary>
     public List<List<Vector3>> OriginalLineData = new List<List<Vector3>>();
 
     public LSystem() { }
 
-    public LSystem(string axiom, Dictionary<char, string> rules, int iterations)
+    public LSystem(string axiom, Dictionary<char, string> rules)
     {
         Axiom = axiom;
         Rules = new Dictionary<char, string>(rules);
-        Iterations = iterations;
     }
 
     /// <summary>
@@ -58,10 +52,17 @@ public class LSystem
     /// </summary>
     public override string ToString()
     {
-        string result = $"Axiom: {Axiom}\nIterations: {Iterations}\nRules:\n";
+        string result = $"Axiom: {Axiom}\n Rules:\n";
         foreach (var kv in Rules)
         {
-            result += $"{kv.Key} -> {kv.Value}\n";
+            if (char.IsUpper(kv.Key))
+            {
+                result += $"{kv.Key} -> {kv.Value}\n";
+            }
+            else
+            {
+                result += $"Line {kv.Key}\n";
+            }
         }
         return result;
     }

@@ -155,7 +155,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             //generator.defaultAngle = 25f;
 
             Debug.Log($"Generated rule: {derivedRule}");
-            generator.Generate(axiom, rules, iterations);
+            //generator.Generate(axiom, rules, iterations);
         }
     }
 }

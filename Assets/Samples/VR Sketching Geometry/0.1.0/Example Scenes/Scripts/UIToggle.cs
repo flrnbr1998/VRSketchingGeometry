@@ -1,8 +1,10 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class UIToggle : MonoBehaviour
 {
     public GameObject uiElement;
+    public GameObject keyboard;
 
     void Update()
     {
@@ -11,6 +13,7 @@ public class UIToggle : MonoBehaviour
         {
             if (uiElement != null)
                 uiElement.SetActive(!uiElement.activeSelf);
+                keyboard.SetActive(false);
         }
     }
 }

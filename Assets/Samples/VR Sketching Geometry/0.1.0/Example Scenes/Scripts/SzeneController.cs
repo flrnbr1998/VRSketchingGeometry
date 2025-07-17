@@ -1,8 +1,11 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using VRSketchingGeometry.SketchObjectManagement;
 using VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts;
+
 
 public class SzeneController : MonoBehaviour
 {
@@ -12,8 +15,9 @@ public class SzeneController : MonoBehaviour
 
     [SerializeField] private AdvancedLSystemInterpreter interpreter;
     [SerializeField] private LSystemGeneratorAdvanced generator;
-    [SerializeField] private BrushExample drawer;
+    [SerializeField] private Drawer drawer;
     [SerializeField] private Dictionary<char, string> rules;
+    [SerializeField] private TextMeshPro recodingLabel;
 
     [Header("Debugging Settings for Mouse Input")]
     [SerializeField] private int iterations = 2;
@@ -31,32 +35,48 @@ public class SzeneController : MonoBehaviour
     private InputAction pointerPositionAction;
     private InputAction controllerPositionAction;
     private InputAction deletePointAction;
+    private InputAction recolorLinesAction;
     [SerializeField] private Transform rightHandAnchor;
 
 
     [Header("L-System Settings")]
-    [SerializeField] private GameObject lineSegmentPrefab;
     [SerializeField] private Transform lSystemParent;
+
+    [Header("UIFields")]
+    [SerializeField] private TMP_InputField axiomInput;
+    [SerializeField] private TMP_InputField keyboardInput;
+    [SerializeField] private TMP_Text ruleDísplay;
+    [SerializeField] private UIToggle UIController;
+    [SerializeField] private GameObject keyboard;
+  
 
     private float timeSinceLastPoint = 0f;
 
     private List<LineSketchObject> recordedLines = new List<LineSketchObject>();
+    private List<LineSketchObject> lSystemRecording = new List<LineSketchObject>();
 
     private List<Vector3> _lines = new List<Vector3>();
 
+    private List<LSystem> lSystems = new List<LSystem>(); 
+
+    private LSystem _currentLSystem;
+
+    private bool _recording = false;
+
     void Start()
     {
-
+        recodingLabel.enabled = false;
+        
     }
     void Update()
     {
-        if (drawAction.triggered)
+        if (drawAction.triggered && !UIController.isActiveAndEnabled)
         {
-            TryStartLineFromMouse();
+            TryStartLine();
             timeSinceLastPoint = 0f;
         }
 
-        if (addPointAction.IsPressed())
+        if (addPointAction.IsPressed() && !UIController.isActiveAndEnabled)
         {
             timeSinceLastPoint += Time.deltaTime;
             if (timeSinceLastPoint >= pointAddInterval && TryAddPointFromMouse())
@@ -69,26 +89,55 @@ public class SzeneController : MonoBehaviour
         {
             recordedLines.Add(_currentLine);
             Debug.Log("Linie zum L-System hinzugefügt.");
+            if (_recording)
+            {
+                lSystemRecording.Add(_currentLine);
+            }
             _currentLine = null;
         }
 
         if (RecordLSystemAction.triggered)
         {
-            recordedLines = new List<LineSketchObject>();
-            Debug.Log("Linie zum L-System hinzugefügt.");
-
-            //drawer.drawLineThroughPoints(line);
+            if (!_recording)
+            {
+                Debug.Log("Start Recording");
+                lSystemRecording = new List<LineSketchObject>();
+                _recording = true;
+                recodingLabel.enabled = true;
+            }
+            else {
+                _currentLSystem = generator.GenerateParaRulesFromMultipleLines(lSystemRecording);
+                lSystems.Add(_currentLSystem);
+                Debug.Log("L-System recording abgschlossen und generiert");
+                _recording = false;
+                recodingLabel.enabled = false;
+                axiomInput.text = _currentLSystem.GetRule('F');
+                ruleDísplay.text = _currentLSystem.ToString();
+            }
+            
             _lines.Clear();
         }
 
-        if (generateRulesAction.triggered && recordedLines.Count > 0)
+        if (generateRulesAction.triggered)
         {
-            generator.GenerateParaRulesFromMultipleLines(recordedLines);
+            if (_currentLSystem != null)
+            {
+                interpreter.Generate(_currentLSystem, iterations, GetControllerPositionInSpace(), rightHandAnchor.forward);
+                
+            }
         }
+
         if (deletePointAction.IsPressed())
         {
             deletePoints();
         }
+
+        if (recolorLinesAction.IsPressed())
+        {
+            recolorLines();
+        }
+
+
     }
 
 
@@ -102,6 +151,7 @@ public class SzeneController : MonoBehaviour
         pointerPositionAction = map.FindAction("PointerPosition");
         controllerPositionAction = map.FindAction("ControllerPosition");
         deletePointAction = map.FindAction("DeletePoints");
+        recolorLinesAction = map.FindAction("RecolorLines");
     }
 
     void OnEnable()
@@ -113,6 +163,7 @@ public class SzeneController : MonoBehaviour
         pointerPositionAction.Enable();
         controllerPositionAction.Enable();
         deletePointAction.Enable();
+        recolorLinesAction.Enable();
     }
 
     void OnDisable()
@@ -124,11 +175,12 @@ public class SzeneController : MonoBehaviour
         pointerPositionAction.Disable();
         controllerPositionAction.Disable();
         deletePointAction.Disable();
+        recolorLinesAction.Disable();
     }
 
-    private void TryStartLineFromMouse()
+    private void TryStartLine()
     {
-        Vector3 drawPoint = GetMousePointInSpace();
+        Vector3 drawPoint = GetControllerPositionInSpace();
         _lines.Add(drawPoint);
 
         _currentLine = drawer.startNewLine(drawPoint);
@@ -137,15 +189,21 @@ public class SzeneController : MonoBehaviour
 
     private void deletePoints()
     {
-        Vector3 drawPoint = GetMousePointInSpace();
+        Vector3 drawPoint = GetControllerPositionInSpace();
         drawer.deletePoints(drawPoint);
+    }
+
+    private void recolorLines()
+    {
+        Vector3 drawPoint = GetControllerPositionInSpace();
+        drawer.colorLines(drawPoint);
     }
 
     private bool TryAddPointFromMouse()
     {
         if (_currentLine != null)
         {
-            Vector3 drawPoint = GetMousePointInSpace();
+            Vector3 drawPoint = GetControllerPositionInSpace();
             if (Vector3.Distance(_lastPoint, drawPoint) >= minPointDistance)
             {
                 _lines.Add(drawPoint);
@@ -161,7 +219,7 @@ public class SzeneController : MonoBehaviour
 
 
 
-    private Vector3 GetMousePointInSpace()
+    private Vector3 GetControllerPositionInSpace()
     {
         if (useControllerPosition)
         {
@@ -171,6 +229,21 @@ public class SzeneController : MonoBehaviour
         Vector2 mousePos = pointerPositionAction.ReadValue<Vector2>();
         Ray ray = Camera.main.ScreenPointToRay(mousePos);
         return ray.GetPoint(drawDistanceFromCamera);
+    }
+
+    public void activateKeyboard()
+    {
+        keyboardInput.text = axiomInput.text;
+        
+    }
+
+    public void enteredNewRule()
+    {
+        string new_rule = keyboardInput.text;
+        Debug.Log("New Rule: " + new_rule);
+        _currentLSystem.Rules['F'] = new_rule;
+        axiomInput.text = _currentLSystem.GetRule('F');
+        ruleDísplay.text = _currentLSystem.ToString();
     }
 
 }

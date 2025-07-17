@@ -10,11 +10,19 @@ TagManager:
   - QDSUISection
   - QDSUIAccentColor
   - QDSUISecondaryButton
+  - QDSUIBorderlessButton
+  - QDSUISharedThemeColor
+  - QDSUIDestructiveButton
+  - QDSUIPrimaryButton
+  - QDSUITextInvertedColor
+  - QDSUITextSecondaryInvertedColor
+  - QDSUIToggleButton
+  - QDSUITextSecondaryColor
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Overlay UI
   - Water
   - UI
   - 
