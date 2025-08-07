@@ -48,7 +48,7 @@ MonoBehaviour:
   useCustomIntegrationConfig: 0
   customIntegrationConfigClassName: 
   hierarchyViewShowsPrivateMembers: 0
-  clickButton: 8193
+  clickButton: 0
   toggleFollowTranslationButton: 0
   toggleFollowRotationButton: 0
-  immersiveDebuggerToggleDisplayButton: 2
+  immersiveDebuggerToggleDisplayButton: 0

@@ -46,6 +46,7 @@ public class SzeneController : MonoBehaviour
     [SerializeField] private TMP_InputField axiomInput;
     [SerializeField] private TMP_InputField keyboardInput;
     [SerializeField] private TMP_Text ruleDísplay;
+    [SerializeField] private TMP_Text iterationDisplay;
     [SerializeField] private UIToggle UIController;
     [SerializeField] private GameObject keyboard;
   
@@ -60,13 +61,14 @@ public class SzeneController : MonoBehaviour
     private List<LSystem> lSystems = new List<LSystem>(); 
 
     private LSystem _currentLSystem;
+    private int curLSystemPosition;
 
     private bool _recording = false;
 
     void Start()
     {
-        recodingLabel.enabled = false;
-        
+        recodingLabel.enabled = true;
+        iterationDisplay.text = iterations.ToString();
     }
     void Update()
     {
@@ -103,14 +105,15 @@ public class SzeneController : MonoBehaviour
                 Debug.Log("Start Recording");
                 lSystemRecording = new List<LineSketchObject>();
                 _recording = true;
-                recodingLabel.enabled = true;
+                recodingLabel.text = "Rec";
             }
             else {
                 _currentLSystem = generator.GenerateParaRulesFromMultipleLines(lSystemRecording);
                 lSystems.Add(_currentLSystem);
+                curLSystemPosition = lSystems.Count - 1;
                 Debug.Log("L-System recording abgschlossen und generiert");
                 _recording = false;
-                recodingLabel.enabled = false;
+                recodingLabel.text = "Press Right-B to start recording...";
                 axiomInput.text = _currentLSystem.GetRule('F');
                 ruleDísplay.text = _currentLSystem.ToString();
             }
@@ -244,6 +247,64 @@ public class SzeneController : MonoBehaviour
         _currentLSystem.Rules['F'] = new_rule;
         axiomInput.text = _currentLSystem.GetRule('F');
         ruleDísplay.text = _currentLSystem.ToString();
+    }
+
+    public void lastLSystem()
+    {
+        if (lSystems.Count == 0l)
+        {
+            return;
+        }
+        if(curLSystemPosition == 0)
+        {
+            curLSystemPosition = lSystems.Count - 1;
+        }
+        else
+        {
+            curLSystemPosition = curLSystemPosition - 1;
+        }
+
+        _currentLSystem = lSystems[curLSystemPosition];
+        axiomInput.text = _currentLSystem.GetRule('F');
+        ruleDísplay.text = _currentLSystem.ToString();
+    }
+
+    public void nextLSystem()
+    {
+        if (lSystems.Count == 0)
+        {
+            return;
+        }
+        if (curLSystemPosition == lSystems.Count - 1)
+        {
+            curLSystemPosition = 0;
+        }
+        else
+        {
+            curLSystemPosition = curLSystemPosition + 1;
+        }
+
+        _currentLSystem = lSystems[curLSystemPosition];
+        axiomInput.text = _currentLSystem.GetRule('F');
+        ruleDísplay.text = _currentLSystem.ToString();
+    }
+
+    public void addIteration()
+    {
+        if (iterations < 10)
+        {
+            iterations++;
+            iterationDisplay.text = iterations.ToString();
+        }
+    }
+
+    public void subIteration()
+    {
+        if (iterations > 1)
+        {
+            iterations--;
+            iterationDisplay.text = iterations.ToString();
+        }
     }
 
 }

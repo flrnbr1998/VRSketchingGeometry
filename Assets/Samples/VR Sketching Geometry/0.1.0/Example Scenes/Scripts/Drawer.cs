@@ -84,7 +84,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
             //Drawing a line and applying a custom material to it
             //ChangeLineMaterialTo(customMaterial, DrawLineWithBrush(_bigBrush));
-            setColor();
+            setColorPreview();
         }
 
 
@@ -269,6 +269,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         public void setLineThickness(float lineThickness)
         {
             thickness = thickSlider.value;
+            colorPreview.transform.localScale = new Vector3(thickness, thickness, thickness);
             Debug.Log(thickness);
         }
 
@@ -278,7 +279,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         [SerializeField] private Image valPreview;    // zeigt V bei aktueller H,S=1
        
 
-        public void setColor()
+        public void setColorPreview()
         {
 
             float h = colorSlider.value;
@@ -288,7 +289,6 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             // 1) Das volle Ergebnis
             Color fullColor = Color.HSVToRGB(h, s, v);
             colorPreview.color = fullColor;
-
             // 2) Hue-Preview (optional): S=1, V=1
             if (huePreview != null)
                 huePreview.color = Color.HSVToRGB(h, 1f, 1f);

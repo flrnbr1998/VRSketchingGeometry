@@ -7,41 +7,55 @@ using UnityEngine.InputSystem;
 public class MovePlayer : MonoBehaviour
 {
 
-    public float moveSpeed = 5f;
+    public float moveSpeed = 0.2f;
     public float rotationSpeed = 100f;
 
     [SerializeField] private InputActionAsset inputActions;
 
-    private InputAction moveAction;
-    private InputAction rotateAction;
+
+    private InputAction goUpAction;
+    private InputAction goDownAction;
     void Start()
     {
 
     }
     void Awake()
     {
-        var map = inputActions.FindActionMap("Player");
-        moveAction = map.FindAction("Move");
-        rotateAction = map.FindAction("Rotate");
+        var map = inputActions.FindActionMap("PlayerMove");
+        goUpAction = map.FindAction("MoveUp");
+        goDownAction = map.FindAction("MoveDown");
     }
 
     void OnEnable()
     {
-        moveAction.Enable();
-        rotateAction.Enable();
+
+        goUpAction.Enable();
+        goDownAction.Enable();
     }
 
     void OnDisable()
     {
-        moveAction.Disable();
-        rotateAction.Disable();
+
+        goUpAction.Disable();
+        goDownAction.Disable();
     }
     void Update()
     {
-        float move = moveAction.ReadValue<float>() * moveSpeed * Time.deltaTime;
-        transform.Translate(Vector3.forward * move);
+        Vector3 moveDirection = Vector3.zero;
 
-        float rotate = rotateAction.ReadValue<float>() * rotationSpeed * Time.deltaTime;
-        transform.Rotate(Vector3.up, rotate);
+        if (goUpAction.IsPressed())
+        {
+            moveDirection += Vector3.up;
+        }
+
+        if (goDownAction.IsPressed())
+        {
+            moveDirection -= Vector3.up;
+        }
+
+        if (moveDirection != Vector3.zero)
+        {
+            transform.Translate(moveDirection.normalized * moveSpeed * Time.deltaTime, Space.World);
+        }
     }
 }
