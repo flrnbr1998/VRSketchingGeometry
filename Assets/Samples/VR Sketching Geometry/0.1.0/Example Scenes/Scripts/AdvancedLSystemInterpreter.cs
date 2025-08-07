@@ -197,7 +197,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
            
 
             var clusterRegex = new Regex(
-                @"T\([^)]*\)(?:K\([^)]*\))*F\(([^)]*)\)",
+                @"T\([^)]*\)(?:K\([^)]*\))*J\(([^)]*)\)",
                 RegexOptions.Compiled
             );
 
@@ -235,7 +235,6 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
             var initialPattern = new Regex(@"[a-z]");
             
-            //baseString = initialPattern.Replace(baseString, match => $"{match.Groups[0].Value}(" + dirDiff.x + "," + dirDiff.y + "," + dirDiff.z + ")");
             Debug.Log("Base String before inflation: " + baseString);
             string inflatedSystem = "";
 
@@ -243,7 +242,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             {
                 baseString = expandCollapsedSystem(baseString, rules);
                 Debug.Log($"Colapsed Expanded After {i} Iteration: " + baseString);
-                inflatedSystem = inflateSystem(baseString, rules); //TKFs
+                inflatedSystem = inflateSystem(baseString, rules); //TKJs
                 string compressedString = compressSystem(inflatedSystem, rules);  //collapsed Strings
 
                 baseString = inflatedSystem;

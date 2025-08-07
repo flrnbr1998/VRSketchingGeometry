@@ -105,30 +105,6 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             return ret;
         }
         
-        /// <summary>
-        /// Creates a LineSketchObject and applies a given brush to it.
-        /// The modified LineSketchObject gets placed into the scene.
-        /// The given LineBrush object defines the modification.
-        /// </summary>
-        /// <param name="lineBrush"></param>
-        /// <returns></returns>
-        private LineSketchObject DrawLineWithBrush(LineBrush lineBrush)
-        {
-            //Create a LineSketchObject
-            LineSketchObject lineSketchObject =
-                Instantiate(defaults.LineSketchObjectPrefab).GetComponent<LineSketchObject>();
-            
-            //Setting the properties of the new LineSketchObject with the given LineBrush
-            Invoker.ExecuteCommand(new SetBrushCommand(lineSketchObject, lineBrush));
-            
-            //This can also be done without the Invoker.
-            //In that case the change of a brush won't be affected by undo commands.
-            //lineSketchObject.SetBrush(lineBrush);
-            
-            DrawLine(lineSketchObject);
-            
-            return lineSketchObject;
-        }
         
         /// <summary>
         /// Creates a LineSketchObject and puts it into the scene.
@@ -152,15 +128,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             _linesDrawn += 1;
         }
         
-        /// <summary>
-        /// Changes the material of a given LineSketchObject.
-        /// </summary>
-        /// <param name="material"></param>
-        /// <param name="lineSketchObject"></param>
-        private static void ChangeLineMaterialTo(Material material, LineSketchObject lineSketchObject)
-        {
-            lineSketchObject.GetComponent<Renderer>().material = material;
-        }
+
         
         /// <summary>
         /// Changes the color of the material of a given LineSketchObject.
@@ -202,7 +170,10 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
 
 
-
+        /// <summary>
+        /// Allows the creation and insertion of a line through defined points into the scene.
+        /// </summary>
+        /// <param name="points"></param>
         public LineSketchObject drawLineThroughPoints(List<Vector3> points)
         {
 
@@ -233,6 +204,10 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         }
 
+        /// <summary>
+        /// Starts a new line and returns a reference to it 
+        /// </summary>
+        /// <param name="startPoint"></param>
         public LineSketchObject startNewLine(Vector3 startPoint)
         {
             //Create a LineSketchObject
@@ -241,7 +216,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             _currentline.gameObject.layer = LayerMask.NameToLayer("LineSketch");
 
             LineBrush newBrush = CreateLineBrush(32, thickness, 64);
-
+            
 
 
             //Setting the properties of the new LineSketchObject with the given LineBrush
@@ -256,16 +231,24 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             
 
             ChangeLineMaterialColorTo(new_color, _currentline);
+            //origSphere = line.transform.Find("Sphere");
 
             return _currentline;
         }
 
+        /// <summary>
+        /// Adds another point to the current line 
+        /// </summary>
+        /// <param name="currentPoint"></param>
         public void addPointToCurrentLine(Vector3 currentPoint)
         {
             Invoker.ExecuteCommand(new AddControlPointCommand(_currentline, currentPoint));
         }
 
-
+        /// <summary>
+        /// Sets the thickness of the line
+        /// </summary>
+        /// <param name="startPoint"></param>
         public void setLineThickness(float lineThickness)
         {
             thickness = thickSlider.value;
@@ -351,7 +334,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     if (splitSphere != null)
                         Destroy(splitSphere.gameObject);
 
-                    // wenn nach dem Löschen nur noch 0–1 Punkte übrig sind => kill
+                    // wenn nach dem Löschen nur noch 0–1 Punkte übrig sind => Destroy
                     if (split.GetControlPoints().Count <= 1)
                     {
                         Destroy(split.gameObject);
