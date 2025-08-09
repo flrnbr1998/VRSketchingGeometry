@@ -17,9 +17,47 @@ using System.Threading.Tasks;
 
 namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 {
+    /// <summary>
+    /// Interpreter für ein parametrisches L-System mit den Operatoren
+    /// <c>T(x,y,z)</c> (Translation), <c>K(x,y,z)</c> (Zwischensegment),
+    /// <c>J(x,y,z)</c> (letztes Segment), Branching mittels <c>[</c> und <c>]</c>,
+    /// sowie Platzhalter <c>X</c> und Aggregator <c>F</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Erwartete Eingaben:</b> Ein expandierter String des L-Systems in obigem Dialekt.
+    /// <c>Generate</c> ruft intern <see cref="ExpandLSystem(string, System.Collections.Generic.Dictionary{char, string}, int)"/> auf
+    /// und interpretiert die resultierende Zeichenkette räumlich in der Szene.
+    /// </para>
+    /// <para>
+    /// <b>Interpretationskonzept:</b><br/>
+    /// - <c>T(v)</c> verschiebt den Stift um <c>v</c> (optional unterdrückt, siehe <see cref="interpretAsTree"/>).<br/>
+    /// - <c>K(v)</c> fügt ein Segment (Zwischensegment) in Richtung <c>v</c> an.<br/>
+    /// - <c>J(v)</c> fügt das letzte Segment an und aktualisiert die lokale Orientierung anhand von <c>v</c>.<br/>
+    /// - <c>[</c>/<c>]</c> sichern/wiederherstellen Position und Rotation (Branching).<br/>
+    /// Alle Richtungsvektoren werden mit der aktuellen Orientierung (<see cref="Quaternion"/>) in Weltkoordinaten transformiert.
+    /// </para>
+    /// <para>
+    /// <b>Bekannte Einschränkungen:</b><br/>
+    /// - <see cref="inflateSystem(string, System.Collections.Generic.Dictionary{char, string})"/> ignoriert aktuell den
+    /// in Kleinbuchstaben-Token geparsten Offset (<c>diffVec</c>) und verwendet nur Basisvektoren aus der Regeldefinition.<br/>
+    /// - <see cref="compressSystem(string, System.Collections.Generic.Dictionary{char, string})"/> ist de facto ein No-Op,
+    /// außer ein Regelwert entspricht exakt einem gefundenen Cluster; dann wird derselbe String zurückgegeben.<br/>
+    /// - Beim Ersetzen von <c>X</c> wird pro Zeichen ein <c>Vector3.zero</c> angehängt, was zu Ausgaben wie <c>"F(0,0,0)"</c> etc. führt.
+    /// Das Format hängt von <c>Vector3.ToString()</c> ab (Kultureinstellungen!).<br/>
+    /// - Einige Felder (<see cref="lineSegmentPrefab"/>, <see cref="parentObject"/>, <see cref="length"/>, <see cref="lineWidth"/>)
+    /// sind aktuell ungenutzt, werden aber beibehalten.
+    /// </para>
+    /// </remarks>
     public class AdvancedLSystemInterpreter : MonoBehaviour
     {
+        
         [SerializeField] private Drawer drawer;
+        
+        /// <summary>
+        /// Wenn <c>true</c>, werden <c>T</c>-Translationen beim Interpretieren auf <c>(0,0,0)</c> gesetzt,
+        /// sodass die Struktur wie ein Baum an Ort und Stelle verzweigt (kein Versetzen ganzer Teilstrukturen).
+        /// </summary>
         [SerializeField] private Boolean interpretAsTree = true;
 
 
@@ -28,8 +66,18 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
         public float length = 0.5f;
         public float lineWidth = 0.02f;
 
+        /// <summary>
+        /// Cache für interpretierte L-System-Zwischenstände pro Iteration.
+        /// Aktuell nicht verwendet, potenziell nützlich für Memoisierung.
+        /// </summary>
         private Dictionary<LSystem, Dictionary<int, string>> interpretedLSystems = new Dictionary<LSystem, Dictionary<int, string>>();
 
+        /// <summary>
+        /// Hilfsfunktion zum Parsen eines Vektors aus einem Token wie <c>"T(1,2,3)"</c> oder <c>"K(0.1,-0.5,2)"</c>.
+        /// </summary>
+        /// <param name="token">Der vollständige Token-String inkl. Klammern.</param>
+        /// <param name="vec">Ausgabewert: geparster <see cref="Vector3"/>.</param>
+        /// <returns><c>true</c>, wenn erfolgreich geparst; sonst <c>false</c>.</returns>
         private bool TryParseVector(string token, out Vector3 vec)
         {
             vec = Vector3.zero;
@@ -51,23 +99,30 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             return false;
         }
 
-
-
+        /// <summary>
+        /// „Bläst“ ein kompaktes System auf, indem es Kleinbuchstaben-Token (z.B <c>a(x,y,z)</c>)
+        /// anhand ihrer Regeldefinition in Sequenzen aus <c>T/K/J</c> umsetzt.
+        /// </summary>
+        /// <param name="baseString">Eingabestring nach dem vorherigen Ersetzungsschritt.</param>
+        /// <param name="rules">Regelwerk (<c>char -> string</c>).</param>
+        /// <returns>Aufgeblähter String mit konkreten <c>T/K/J</c>-Sequenzen.</returns>
         private string inflateSystem(string baseString, Dictionary<char, string> rules)
         {
-
-
-            //Alle weiteren
+            // Erfasst Cluster der Form: T(...)[K(...)]*J(...); die letzte J-Gruppe wird separat geklammert.
             var clusterRegex = new Regex(@"T\([^)]*\)(?:K\([^)]*\))*J\(([^)]*)\)");
+
+            //Groß-/Kleinbuchstaben mit optionalen Parametern sowie Klammern.
             var tokenPattern = new Regex(@"([A-Za-z])(\(([^)]*)\))?|\[|\]", RegexOptions.Compiled);
 
-
+            // Kleinbuchstaben mit Vektorparametern
             var lowerPattern = @"([a-z])\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*\)";
+            // Großbuchstaben mit Vektorparametern.
             var upperPattern = @"([A-Z])\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*\)";
+            
             var ruleMatcher = new Regex(lowerPattern, RegexOptions.Compiled);
             var operatorMatcher = new Regex(upperPattern, RegexOptions.Compiled);
 
-
+            // Für jedes Kleinbuchstaben-Token in baseStrin
             foreach (Match m in ruleMatcher.Matches(baseString))
             {
 
@@ -87,7 +142,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                 Debug.Log(rule);
                 string newString = "";
 
-
+                // Für jeden Regel-Cluster: extrahiere Großbuchstaben-Operatoren samt Basiskoordinaten
                 foreach (Match match1 in clusterRegex.Matches(rule))
                 {
                     foreach (Match match2 in operatorMatcher.Matches(match1.Value))
@@ -116,12 +171,12 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     
                 }
 
-                //Debug.Log("DEBUG Eigesetzte Regel: " + newString);
+                // Ersetze genau das erste Vorkommen dieses Kleinbuchstaben-Tokens durch den neu aufgebauten String.
                 var tokenMatcher = new Regex($@"([{ch}])\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*\)",
                                             RegexOptions.Compiled);
 
                 int counter = -1;    // Läuft bei jedem Match hoch
-                int target = 0; // Dein Index, welches Match du ersetzen willst (0-basiert o. 1-basiert — je nachdem)
+                int target = 0; //Index, welches Match ersetzt wird 
 
                 baseString = tokenMatcher.Replace(baseString, m =>
                 {
@@ -149,7 +204,14 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         }
 
-
+        /// <summary>
+        /// Expandiert Kollaps-Token <c>F(x,y,z)</c> zu <c>rules['F']</c>, wobei allen Kleinbuchstaben-Symbolen
+        /// die Parameter <c>(x,y,z)</c> angehängt werden; ersetzt außerdem <c>X</c> gemäß <c>rules['X']</c>
+        /// und hängt für jedes Zeichen <c>Vector3.zero</c> an.
+        /// </summary>
+        /// <param name="collapsedString">Eingabestring mit Kollaps-Token.</param>
+        /// <param name="rules">Regelwerk (<c>char → string</c>).</param>
+        /// <returns>Erweitertes System als String.</returns>
         private string expandCollapsedSystem(string collapsedString, Dictionary<char, string> rules)
         {
             var tokenMatcher = new Regex(
@@ -192,6 +254,16 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             return replacedX;
         }
 
+
+        /// <summary>
+        /// !Yet to be fixed!
+        /// Versucht, aufgeblähte Sequenzen von <c>T/K/J</c> zu „komprimieren“, indem exakte
+        /// Übereinstimmungen mit Regelwerten gesucht werden. Aktuell bewirkt dies praktisch
+        /// keine strukturelle Kompression (die Übereinstimmung führt zur Rückgabe desselben Strings).
+        /// </summary>
+        /// <param name="expandedSystem">Aufgeblähter String.</param>
+        /// <param name="rules">Regelwerk.</param>
+        /// <returns>String nach dem (nahezu no-op) Kompressionsversuch.</returns>
         private string compressSystem(string expandedSystem, Dictionary<char, string> rules)
         {
            
@@ -219,8 +291,18 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         }
 
-
-        private string ExpandLSystemII(string axiom, Dictionary<char, string> rules, int iterations)
+        /// <summary>
+        /// Führt die L-System-Expansion über mehrere Iterationen aus:
+        /// 1) Kollabierte Tokens expandieren (<see cref="expandCollapsedSystem"/>),
+        /// 2) in konkrete <c>T/K/J</c>-Sequenzen „aufblasen“ (<see cref="inflateSystem"/>),
+        /// 3) optional komprimieren (<see cref="compressSystem"/>; derzeit wirkungslos),
+        /// und gibt schließlich den aufgeblähten String zurück.
+        /// </summary>
+        /// <param name="axiom">Axiom des L-Systems (z.&nbsp;B. "F").</param>
+        /// <param name="rules">Regelwerk (<c>char → string</c>).</param>
+        /// <param name="iterations">Anzahl der Iterationen.</param>
+        /// <returns>Letzter aufgeblähter String nach <paramref name="iterations"/> Durchläufen.</returns>
+        private string ExpandLSystem(string axiom, Dictionary<char, string> rules, int iterations)
         {
             string current = axiom; //F
             Vector3 dirDiff = Vector3.zero;
@@ -241,7 +323,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             for (int i = 0; i < iterations; i++)
             {
                 baseString = expandCollapsedSystem(baseString, rules);
-                Debug.Log($"Colapsed Expanded After {i} Iteration: " + baseString);
+                Debug.Log($"Collapsed Expanded After {i} Iteration: " + baseString);
                 inflatedSystem = inflateSystem(baseString, rules); //TKJs
                 string compressedString = compressSystem(inflatedSystem, rules);  //collapsed Strings
 
@@ -254,22 +336,68 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
 
         }
 
-        public void Generate(LSystem lSystem, int iterations, Vector3 controllerPosition, Vector3 playerDirection)
+        /// <summary>
+        /// Expandiert das übergebene L-System und startet anschließend die Interpretation
+        /// in der Szene relativ zu <paramref name="controllerPosition"/> mit Ausrichtung entlang
+        /// <paramref name="playerDirection"/>.
+        /// </summary>
+        /// <param name="lSystem">L-System mit Axiom und Regeln.</param>
+        /// <param name="iterations">Anzahl der Expansions-Iterationen.</param>
+        /// <param name="controllerPosition">Weltposition, an der die Struktur beginnt.</param>
+        /// <param name="controllerRotation">Gibt Orientierung des erzeugten Systems vor</param>
+        public void Generate(LSystem lSystem, int iterations, Vector3 controllerPosition, Quaternion controllerRotation)
         {
-            string expanded = ExpandLSystemII(lSystem.Axiom, lSystem.Rules, iterations);
+            string expanded = ExpandLSystem(lSystem.Axiom, lSystem.Rules, iterations);
 
-            StartCoroutine(InterpretLSystemRotated(expanded, controllerPosition, playerDirection));
+            StartCoroutine(InterpretLSystemWithControllerRot(expanded, controllerPosition, controllerRotation));
         }
 
-
-        private IEnumerator InterpretLSystemRotated(string lSystem, Vector3 controllerPosition, Vector3 playerDirection)
+        /// <summary>
+        /// Interpretiert ein expandiertes L-System relativ zur Controllerpose und zeichnet die resultierenden Linien.
+        /// Die erste Zeichnungsrichtung (erstes <c>K(...)</c> oder <c>J(...)</c> im String) wird dabei so ausgerichtet,
+        /// dass sie exakt der <see cref="Vector3.forward"/>-Achse entspricht; anschließend wird das gesamte System
+        /// mit der übergebenen <paramref name="controllerRotation"/> in die Welt gedreht.
+        /// </summary>
+        ///  /// <param name="lSystem">L-System mit Axiom und Regeln.</param>
+        /// <param name="iterations">Anzahl der Expansions-Iterationen.</param>
+        /// <param name="controllerPosition">Weltposition, an der die Struktur beginnt.</param>
+        /// <param name="controllerRotation">Rotation des Controllers, die auf das erzeugte System übertragen wird</param>
+        private IEnumerator InterpretLSystemWithControllerRot(string lSystem, Vector3 controllerPosition, Quaternion controllerRotation)
         {
             var transformStack = new Stack<(Vector3 pos, Quaternion rot)>();
             Vector3 position = controllerPosition;
-            Quaternion currentRot = Quaternion.FromToRotation(Vector3.up, playerDirection.normalized);
 
+            // 1) Erste Segmentrichtung aus dem String holen (erstes K(...) oder J(...))
+            Vector3 firstDirLocal = Vector3.zero;
+            {
+                int scan = 0;
+                while (scan < lSystem.Length - 1)
+                {
+                    char c = lSystem[scan];
+                    if ((c == 'K' || c == 'J') && lSystem[scan + 1] == '(')
+                    {
+                        int end = lSystem.IndexOf(')', scan);
+                        if (end > scan && TryParseVector(lSystem.Substring(scan, end - scan + 1), out var v) && v.sqrMagnitude > Mathf.Epsilon)
+                        {
+                            firstDirLocal = v;
+                        }
+                        break;
+                    }
+                    scan++;
+                }
+            }
+
+            // 2) Drehung, die "erste Linie" → lokale Forward (Z) bringt
+            Quaternion alignToForward = (firstDirLocal.sqrMagnitude > Mathf.Epsilon)
+                ? Quaternion.FromToRotation(firstDirLocal.normalized, Vector3.forward)
+                : Quaternion.identity;
+
+            // 3) Weltorientierung = exakt Controller-Rotation (inkl. Roll)
+            Quaternion currentRot = controllerRotation;
+
+            // Parent nur zur Ordnung
             GameObject lSystemParent = new GameObject("LSystemParent");
-            lSystemParent.transform.position = controllerPosition;
+            lSystemParent.transform.SetPositionAndRotation(controllerPosition, controllerRotation);
 
             var drawPoints = new List<Vector3>();
             var lines = new List<List<Vector3>>();
@@ -279,7 +407,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             {
                 char command = lSystem[i];
 
-                // ───── Translation ─────────────────────────────────────────
+                // ── Translation: T(x,y,z)
                 if (command == 'T' && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
                 {
                     int end = lSystem.IndexOf(')', i);
@@ -289,29 +417,31 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                         drawPoints = new List<Vector3>();
 
                         if (interpretAsTree) offset = Vector3.zero;
-                        // wende aktuelle Rotation an:
-                        offset = currentRot * offset;
-                        position += offset;
+
+                        // WICHTIG: erst ins "ausgerichtete" lokale System, dann mit Controller in die Welt
+                        Vector3 offAligned = alignToForward * offset;
+                        position += currentRot * offAligned;
                         drawPoints.Add(position);
                     }
                     i = end + 1;
                     continue;
                 }
 
-                // ───── Bewegung ────────────────────────────────────────────
+                // ── Bewegung: K(x,y,z) / J(x,y,z)
                 if ((command == 'J' || command == 'K') && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
                 {
                     int end = lSystem.IndexOf(')', i);
                     if (end > i && TryParseVector(lSystem.Substring(i, end - i + 1), out Vector3 dirLocal))
                     {
-                        Vector3 worldDir = currentRot * dirLocal;
-                        position += worldDir;
+                        // erst lokal ausrichten, dann in die Welt
+                        Vector3 dirAligned = alignToForward * dirLocal;
+                        position += currentRot * dirAligned;
                         drawPoints.Add(position);
 
-                        if (command == 'J')
+                        if (command == 'J' && dirAligned.sqrMagnitude > Mathf.Epsilon)
                         {
-                            // update lokale Orientierung
-                            Quaternion localRot = Quaternion.FromToRotation(Vector3.up, dirLocal.normalized);
+                            // Vorwärtsachse (Z) an das letzte Segment im lokalen System anpassen
+                            Quaternion localRot = Quaternion.FromToRotation(Vector3.forward, dirAligned.normalized);
                             currentRot = currentRot * localRot;
                         }
                     }
@@ -319,7 +449,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     continue;
                 }
 
-                // ───── Branch Push ─────────────────────────────────────────
+                // ── Branch Push
                 if (command == '[')
                 {
                     transformStack.Push((position, currentRot));
@@ -327,7 +457,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
                     continue;
                 }
 
-                // ───── Branch Pop ──────────────────────────────────────────
+                // ── Branch Pop
                 if (command == ']')
                 {
                     if (transformStack.Count > 0)
@@ -344,7 +474,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             }
 
             if (drawPoints.Count > 1) lines.Add(drawPoints);
-           
+
             foreach (var pts in lines)
             {
                 var lineObj = drawer.drawLineThroughPoints(pts);
@@ -353,108 +483,7 @@ namespace VRSketchingGeometryPackage.Samples.ExampleScenes.Scripts
             }
         }
 
-        //Working but doesnt Rotate
-        private void InterpretLSystem(string lSystem, Vector3 controllerPosition, Vector3 playerDirection)
-        {
-            var transformStack = new Stack<TransformInfo>();
-            Vector3 position = controllerPosition;
-            Vector3 rotation = Vector3.up;
-            Quaternion rot;
-            
-            GameObject lSystemParent = new GameObject("LSystemParent");
-            lSystemParent.transform.position = controllerPosition;
-            lSystemParent.transform.rotation = Quaternion.identity;
 
-            var drawPoints = new List<Vector3>();
-            var lines = new List<List<Vector3>>();
-
-            rot = Quaternion.FromToRotation(Vector3.up, rotation.normalized);
-
-            int i = 0;
-            while (i < lSystem.Length)
-            {
-                char command = lSystem[i];
-
-                // Translation T(x,y,z)
-                if (command == 'T' && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
-                {
-                    int end = lSystem.IndexOf(')', i);
-                    if (end > i && TryParseVector(lSystem.Substring(i, end - i + 1), out Vector3 offset))
-                    {
-                        if (drawPoints.Count > 1) lines.Add(drawPoints);
-                        drawPoints = new List<Vector3>();
-                        //TODO: Vector Rotation
-                        if (interpretAsTree) {
-                            offset = Vector3.zero;
-                        }
-
-                        rot = Quaternion.FromToRotation(Vector3.up, rotation.normalized);
-                       
-                        offset = rot * offset;
-
-                        position += offset;
-                        drawPoints.Add(position);
-                    }
-                    i = end + 1;
-                    continue;
-                }
-
-                // Movement F(x,y,z) or K(x,y,z)
-                if ((command == 'J' || command == 'K') && i + 1 < lSystem.Length && lSystem[i + 1] == '(')
-                {
-                    int end = lSystem.IndexOf(')', i);
-                    if (end > i && TryParseVector(lSystem.Substring(i, end - i + 1), out Vector3 dir))
-                    {
-                        //Vector Rotation
-                        dir = rot * dir;
-                        Vector3 newPos = position + dir;
-                        
-                        position = newPos;
-                        drawPoints.Add(position);
-                        if (command == 'J')
-                        {
-                            rotation = dir;
-                        }
-                    }
-                    i = end + 1;
-                    continue;
-                }
-
-                // Branch Push
-                if (command == '[')
-                {
-                    transformStack.Push(new TransformInfo(position, rotation));
-                    i++;
-                    continue;
-                }
-
-                // Branch Pop
-                if (command == ']')
-                {
-                    if (transformStack.Count > 0)
-                    {
-                        if (drawPoints.Count > 1) lines.Add(drawPoints);
-                        drawPoints = new List<Vector3>();
-                        var ti = transformStack.Pop();
-                        position = ti.Position;
-                        rotation = ti.Rotation;
-                    }
-                    i++;
-                    continue;
-                }
-
-                i++;
-            }
-
-            LineSketchObject currentLine = null;
-            if (drawPoints.Count > 1) lines.Add(drawPoints);
-            foreach (var pts in lines)
-            {
-                Debug.Log(pts);
-                currentLine = drawer.drawLineThroughPoints(pts);
-                currentLine.transform.parent = lSystemParent.transform;
-            }
-        }
 
         private struct TransformInfo
         {

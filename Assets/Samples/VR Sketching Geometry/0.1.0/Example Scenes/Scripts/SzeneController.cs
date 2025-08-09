@@ -125,7 +125,7 @@ public class SzeneController : MonoBehaviour
         {
             if (_currentLSystem != null)
             {
-                interpreter.Generate(_currentLSystem, iterations, GetControllerPositionInSpace(), rightHandAnchor.forward);
+                interpreter.Generate(_currentLSystem, iterations, GetControllerPositionInSpace(), rightHandAnchor.rotation);
                 
             }
         }
