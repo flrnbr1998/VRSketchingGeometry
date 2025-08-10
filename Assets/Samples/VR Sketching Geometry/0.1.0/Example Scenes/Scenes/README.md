@@ -29,3 +29,20 @@ To interact with a scene at runtime you can use the buttons provided in the insp
 
 ### Interaction
 - modified line creation
+
+## L-System Example
+
+### Instruction
+- designed to work on Meta Quest 3
+- load scene and press run
+
+### Shows
+- simplified user interface that allows for drawing and creation of L-Systems in VR
+
+### Interactions
+- draw lines
+- capture lines into one L-System
+- place L-System in the Scene
+
+### Options
+- turn off 'interpret as tree' in L-System Interpreter to unlock the transpose value of the lines (allows for systems with spaces between the segments of lines) 

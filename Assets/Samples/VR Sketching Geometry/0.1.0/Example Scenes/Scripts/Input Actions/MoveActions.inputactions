@@ -28,7 +28,7 @@
                 {
                     "name": "",
                     "id": "43fdd7e4-2f0d-437a-a057-13cc674cb938",
-                    "path": "<XRController>{LeftHand}/{PrimaryButton}",
+                    "path": "<XRController>{LeftHand}/{SecondaryButton}",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -50,7 +50,7 @@
                 {
                     "name": "",
                     "id": "ff141c97-d492-41cf-b370-71ee332f21b4",
-                    "path": "<XRController>{LeftHand}/{SecondaryButton}",
+                    "path": "<XRController>{LeftHand}/{PrimaryButton}",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
